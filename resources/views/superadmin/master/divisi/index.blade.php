@@ -13,6 +13,13 @@
                 <span>&times;</span>
             </button>
         </div>
+    @elseif (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
     @endif
 
     <div class="card shadow mb-4">
@@ -46,12 +53,18 @@
                             <td>{{ $d->created_at }}</td>
                             <td>{{ $d->updated_at }}</td>
                             <td>
-                                <button class="btn btn-warning btn-sm">
+                                <button class="btn btn-warning btn-sm"
+                                    data-toggle="modal"
+                                    data-target="#editDivisiModal{{ $d->id_divisi }}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-danger btn-sm">
+
+                                <button class="btn btn-danger btn-sm"
+                                    data-toggle="modal"
+                                    data-target="#deleteDivisiModal{{ $d->id_divisi }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
+
                             </td>
                         </tr>
                         @endforeach
@@ -77,5 +90,7 @@ $(document).ready(function () {
 </script>
 
 @include('superadmin.master.divisi.modal-create')
+@include('superadmin.master.divisi.modal-edit')
+@include('superadmin.master.divisi.modal-delete')
 
 @endsection

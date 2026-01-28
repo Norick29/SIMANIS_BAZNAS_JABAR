@@ -48,7 +48,7 @@
                             <a class="collapse-item" href="{{ route('jabatan.index') }}">Data Jabatan</a>
                             <a class="collapse-item" href="{{ route('divisi.index') }}">Data Divisi</a>
                             <a class="collapse-item" href="#">Data Barang</a>
-                            <a class="collapse-item" href="#">Data Kategori</a>
+                            <a class="collapse-item" href="{{ route('kategori.index') }}">Data Kategori</a>
                             <a class="collapse-item" href="#">Data Lokasi</a>
                         </div>
                     </div>

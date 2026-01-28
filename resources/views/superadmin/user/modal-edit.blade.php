@@ -1,78 +1,100 @@
 @foreach ($users as $user)
-<!-- Edit User Modal -->
-<div class="modal fade" id="editUserModal{{ $user->id_user }}" tabindex="-1" role="dialog"
-     aria-labelledby="editUserLabel{{ $user->id_user }}" aria-hidden="true">
+<div class="modal fade"
+     id="editUserModal{{ $user->id_user }}"
+     tabindex="-1"
+     role="dialog"
+     aria-hidden="true">
 
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg">
 
-            <div class="modal-header bg-warning text-white">
-                <h5 class="modal-title" id="editUserLabel{{ $user->id_user }}">Edit User</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
+            {{-- HEADER --}}
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit mr-2"></i> Edit User
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
                 </button>
             </div>
 
+            {{-- FORM --}}
             <form action="{{ route('users.update', $user->id_user) }}" method="POST">
                 @csrf
                 @method('PUT')
 
+                {{-- BODY --}}
                 <div class="modal-body">
+                    <div class="row">
 
-                    {{-- Full Name --}}
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" 
-                               name="name" 
-                               value="{{ $user->name }}"
-                               class="form-control" 
-                               required>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <input type="text"
+                                       name="name"
+                                       class="form-control"
+                                       value="{{ $user->name }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email"
+                                       name="email"
+                                       class="form-control"
+                                       value="{{ $user->email }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Phone Number</label>
+                                <input type="text"
+                                       name="no_hp"
+                                       class="form-control"
+                                       value="{{ $user->no_hp }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Role</label>
+                                <select name="role" class="form-control" required>
+                                    <option value="super admin" {{ $user->role == 'super admin' ? 'selected' : '' }}>Super Admin</option>
+                                    <option value="kadiv" {{ $user->role == 'kadiv' ? 'selected' : '' }}>Kepala Divisi</option>
+                                    <option value="kadept" {{ $user->role == 'kadept' ? 'selected' : '' }}>Kepala Departement</option>
+                                    <option value="staf" {{ $user->role == 'staf' ? 'selected' : '' }}>Staf</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <small class="text-muted">
+                                * Password tidak dapat diubah di halaman ini.
+                            </small>
+                        </div>
+
                     </div>
-
-                    {{-- Email --}}
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" 
-                               name="email" 
-                               value="{{ $user->email }}"
-                               class="form-control"
-                               required>
-                    </div>
-
-                    {{-- Phone Number --}}
-                    <div class="form-group">
-                        <label>Phone Number</label>
-                        <input type="text" 
-                               name="no_hp" 
-                               value="{{ $user->no_hp }}"
-                               class="form-control"
-                               required>
-                    </div>
-
-                    {{-- Role --}}
-                    <div class="form-group">
-                        <label>Role</label>
-                        <select name="role" class="form-control" required>
-                            <option value="super admin" {{ $user->role === 'super admin' ? 'selected' : '' }}>Super Admin</option>
-                            <option value="kadiv" {{ $user->role === 'kadiv' ? 'selected' : '' }}>Kepala Divisi</option>
-                            <option value="kadept" {{ $user->role === 'kadept' ? 'selected' : '' }}>Kepala Departement</option>
-                            <option value="staf" {{ $user->role === 'staf' ? 'selected' : '' }}>Staf</option>
-                        </select>
-                    </div>
-
-                    <small class="text-muted">
-                        * Password cannot be changed here.<br>
-                        * Password changes can only be done from the user's Profile page.
-                    </small>
-
                 </div>
 
+                {{-- FOOTER --}}
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-save"></i> Update User
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        <i class="fas fa-times"></i> Batal
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-warning">
+                        <i class="fas fa-save"></i> Simpan Perubahan
                     </button>
                 </div>
+
             </form>
 
         </div>

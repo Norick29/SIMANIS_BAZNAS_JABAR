@@ -73,11 +73,16 @@
                                 </button>
 
                                 @if(auth()->user()->id_user != $user->id_user)
-                                    <button class="btn btn-danger btn-sm"
+                                    {{-- <button class="btn btn-danger btn-sm"
                                             data-toggle="modal"
                                             data-target="#deleteConfirmModal"
                                             data-action="{{ route('users.destroy', $user->id_user) }}"
                                             data-name="{{ $user->name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button> --}}
+                                    <button class="btn btn-danger btn-sm"
+                                        data-toggle="modal"
+                                        data-target="#deleteUserModal{{ $user->id_user }}">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 @endif
@@ -90,12 +95,25 @@
                             <td colspan="5" class="text-center text-muted">No users found.</td>
                         </tr>
                         @endif
-
+                        
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+</div>
+<div>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
 </div>
 
 <script>

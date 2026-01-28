@@ -25,7 +25,35 @@ class JabatanController extends Controller
         ]);
 
         return redirect()
-            ->route('superadmin.master.jabatan.index')
+            ->route('jabatan.index')
             ->with('success', 'Jabatan berhasil ditambahkan');
     }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nama_jabatan' => 'required|string|max:100',
+        ]);
+
+        $jabatan = Jabatan::findOrFail($id);
+        $jabatan->update($request->only('nama_jabatan'));
+
+        return back()->with('success', 'Data jabatan berhasil diperbarui.');
+    }
+
+    public function destroy($id)
+    {
+        $jabatan = Jabatan::findOrFail($id);
+
+        // OPSIONAL: cegah hapus jika masih dipakai
+        if ($jabatan->amil()->count() > 0) {
+            return back()->with('error', 'Jabatan tidak dapat dihapus karena masih digunakan oleh amil.');
+
+        }
+
+        $jabatan->delete();
+
+        return back()->with('success', 'Data jabatan berhasil dihapus.');
+    }
+
 }

@@ -13,8 +13,8 @@ class divisi extends Model
         'nama_divisi',
     ];
 
-    // public function amil()
-    // {
-    //     return $this->belongsTo(amil::class, 'id_amil');
-    // }
+    public function amil()
+    {
+        return $this->hasMany(Amil::class, 'id_divisi');
+    }
 }

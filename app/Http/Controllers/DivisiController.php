@@ -29,4 +29,35 @@ class DivisiController extends Controller
             ->with('success', 'Divisi berhasil ditambahkan');
     }
 
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nama_divisi'    => 'required|string|max:100',
+        ]);
+
+        $divisi = Divisi::findOrFail($id);
+        $divisi->update($request->only(
+            'nama_divisi'
+        ));
+
+        return back()->with('success', 'Data divisi berhasil diperbarui.');
+    }
+
+   public function destroy($id)
+    {
+        $divisi = Divisi::findOrFail($id);
+
+        // Cegah hapus jika masih digunakan oleh amil
+        if ($divisi->amil()->count() > 0) {
+            return back()->with(
+                'error',
+                'Divisi tidak dapat dihapus karena masih digunakan oleh amil.'
+            );
+        }
+
+        $divisi->delete();
+
+        return back()->with('success', 'Data divisi berhasil dihapus.');
+    }
+
 }

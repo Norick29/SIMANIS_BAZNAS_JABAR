@@ -78,6 +78,18 @@
                         @enderror
                     </div>
 
+                    <div class="form-group">
+                        <label>Nama Departemen</label>
+                        <input type="text"
+                               name="nama_dept"
+                               class="form-control @error('nama_dept') is-invalid @enderror"
+                               placeholder="Masukkan nama departemen"
+                               required>
+                        @error('nama')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                 </div>
 
                 <div class="modal-footer">

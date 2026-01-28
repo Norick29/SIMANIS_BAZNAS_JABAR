@@ -13,6 +13,14 @@
                 <span>&times;</span>
             </button>
         </div>
+
+    @elseif (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
+        </div>
     @endif
 
     <div class="card shadow mb-4">
@@ -46,10 +54,14 @@
                             <td>{{ $j->created_at }}</td>
                             <td>{{ $j->updated_at }}</td>
                             <td>
-                                <button class="btn btn-warning btn-sm">
+                                <button class="btn btn-warning btn-sm"
+                                    data-toggle="modal"
+                                    data-target="#editJabatanModal{{ $j->id_jabatan }}">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-danger btn-sm">
+                                <button class="btn btn-danger btn-sm"
+                                    data-toggle="modal"
+                                    data-target="#deleteJabatanModal{{ $j->id_jabatan }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -77,5 +89,7 @@ $(document).ready(function () {
 </script>
 
 @include('superadmin.master.jabatan.modal-create')
+@include('superadmin.master.jabatan.modal-edit')
+@include('superadmin.master.jabatan.modal-delete')
 
 @endsection
