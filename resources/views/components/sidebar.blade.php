@@ -23,7 +23,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('users.index') }}">
                         <i class="fas fa-fw fa-users"></i>
-                        <span>User Management </span></a>
+                        <span>Manajemen User </span></a>
                 </li>
 
                 <!-- Divider -->
@@ -45,19 +45,31 @@
                         <div class="bg-white py-2 collapse-inner rounded">
                             {{-- <h6 class="collapse-header"></h6> --}} 
                             <a class="collapse-item" href="{{ route('amil.index') }}">Data Amil</a>
-                            <a class="collapse-item" href="{{ route('jabatan.index') }}">Data Jabatan</a>
+                            <a class="collapse-item" href="{{ route('barang.index') }}">Data Barang</a>
                             <a class="collapse-item" href="{{ route('divisi.index') }}">Data Divisi</a>
-                            <a class="collapse-item" href="#">Data Barang</a>
+                            <a class="collapse-item" href="{{ route('jabatan.index') }}">Data Jabatan</a>
+                            <a class="collapse-item" href="{{ route('jenis.index') }}">Data Jenis</a>
                             <a class="collapse-item" href="{{ route('kategori.index') }}">Data Kategori</a>
-                            <a class="collapse-item" href="#">Data Lokasi</a>
+                            <a class="collapse-item" href="{{ route('lokasi.index') }}">Data Lokasi</a>
+                            <a class="collapse-item" href="{{ route('sumber.index') }}">Data Sumber Dana</a>
                         </div>
                     </div>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ route('users.index') }}">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#asset"
+                        aria-expanded="true" aria-controls="asset">
                         <i class="fas fa-fw fa-box"></i>
-                        <span>Data Aset</span></a>
+                        <span>Manajemen Asset</span>
+                    </a>
+                    <div id="asset" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                        <div class="bg-white py-2 collapse-inner rounded">
+                            {{-- <h6 class="collapse-header"></h6> --}} 
+                            <a class="collapse-item" href="buttons.html">Data Asset</a>
+                            <a class="collapse-item" href="buttons.html">Maintenance</a>
+                            <a class="collapse-item" href="cards.html">Riwayat Pindah</a>
+                        </div>
+                    </div>
                 </li>
 
                 <li class="nav-item">

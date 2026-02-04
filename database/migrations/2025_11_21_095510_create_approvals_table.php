@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('approvals', function (Blueprint $table) {
             $table->id('id_approval');
+            $table->uuid('id_pindah');
             $table->string('resource_type', 50);
             $table->unsignedBigInteger('resource_id');
             $table->enum('status', ['menunggu', 'disetujui', 'ditolak'])->default('menunggu');
@@ -24,6 +25,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            $table->foreign('id_pindah')->references('id_pindah')->on('pindah_asets')->onUpdate('cascade')->onDelete('cascade');
             $table->foreign('requested_by')->references('id_user')->on('users')->onUpdate('cascade')->onDelete('set null');
             $table->foreign('approved_by')->references('id_user')->on('users')->onUpdate('cascade')->onDelete('set null');
         });

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('lokasis', function (Blueprint $table) {
             $table->id('id_lokasi');
+            $table->string('kode_lokasi', 20)->unique();
             $table->string('nama_lokasi', 150);
             $table->timestamps();
             $table->softDeletes();

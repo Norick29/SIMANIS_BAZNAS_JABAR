@@ -8,14 +8,40 @@
     <h1 class="h3 mb-2 text-gray-800">Manajemen Kategori</h1>
 
     {{-- Success Message --}}
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
+    @if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+    </div>
+@endif
+
+{{-- SESSION ALERT --}}
+@foreach (['success', 'error', 'warning'] as $type)
+    @if (session($type))
+        <div class="alert alert-{{ $type == 'error' ? 'danger' : $type }} alert-dismissible fade show">
+            {{ session($type) }}
+
+            @if ($type == 'warning' && session('duplicates'))
+                <hr>
+                <ul>
+                    @foreach (session('duplicates') as $d)
+                        <li>{{ $d }}</li>
+                    @endforeach
+                </ul>
+            @endif
+
             <button type="button" class="close" data-dismiss="alert">
                 <span>&times;</span>
             </button>
         </div>
     @endif
+@endforeach
 
     {{-- Card --}}
     <div class="card shadow mb-4">
@@ -51,16 +77,21 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $k->kode_kategori }}</td>
                             <td>{{ $k->nama_kategori }}</td>
-                            <td>{{ $k->created_at }}</td>
-                            <td>{{ $k->updated_at }}</td>
+                            <td>{{ $k->created_at->format('d M Y') }}</td>
+                            <td>{{ $k->updated_at->diffForHumans() }}</td>
                             <td>
-                                <button class="btn btn-warning btn-sm" disabled>
+                                <button class="btn btn-warning btn-sm"
+                                        data-toggle="modal"
+                                        data-target="#editKategoriModal{{ $k->id_kategori }}">
                                     <i class="fas fa-edit"></i>
                                 </button>
 
-                                <button class="btn btn-danger btn-sm" disabled>
+                                <button class="btn btn-danger btn-sm"
+                                        data-toggle="modal"
+                                        data-target="#deleteKategoriModal{{ $k->id_kategori }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
+
                             </td>
                         </tr>
                         @empty
@@ -80,5 +111,7 @@
 
 {{-- Modal --}}
 @include('superadmin.master.kategori.modal-create')
+@include('superadmin.master.kategori.modal-edit')
+@include('superadmin.master.kategori.modal-delete')
 
 @endsection

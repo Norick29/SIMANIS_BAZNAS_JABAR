@@ -16,15 +16,21 @@ return new class extends Migration
             $table->string('kode_aset', 50)->unique();
             $table->unsignedBigInteger('id_barang');
             $table->unsignedBigInteger('id_kategori');
+            $table->unsignedBigInteger('id_jenis');
             $table->unsignedBigInteger('id_lokasi');
             $table->unsignedBigInteger('id_amil');
+            $table->unsignedBigInteger('id_sumber_dana');
+
+
+
+            $table->string('merk', 100)->nullable();
+            $table->string('tahun', 4)->nullable();
             $table->integer('volume')->default(1);
             $table->string('satuan', 20)->nullable();
             $table->double('harga')->default(0);
             $table->double('total_harga')->default(0);
             $table->enum('kondisi', ['baik', 'rusak', 'hilang'])->default('baik');
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif');
-            $table->string('jenis_aset', 100)->nullable();
             $table->string('qr_code', 255)->nullable();
             $table->timestamps();
             $table->softDeletes();
@@ -33,6 +39,8 @@ return new class extends Migration
             $table->foreign('id_kategori')->references('id_kategori')->on('kategoris')->onUpdate('cascade')->onDelete('restrict');
             $table->foreign('id_lokasi')->references('id_lokasi')->on('lokasis')->onUpdate('cascade')->onDelete('restrict');
             $table->foreign('id_amil')->references('id_amil')->on('amils')->onUpdate('cascade')->onDelete('restrict');
+            $table->foreign('id_jenis')->references('id_jenis')->on('jenis')->onUpdate('cascade')->onDelete('restrict');
+            $table->foreign('id_sumber_dana')->references('id_sumber_dana')->on('sumbers')->onUpdate('cascade')->onDelete('restrict');
         });
     }
 

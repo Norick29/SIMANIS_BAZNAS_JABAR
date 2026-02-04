@@ -8,6 +8,10 @@ use App\Http\Controllers\AmilController;
 use App\Http\Controllers\JabatanController;
 use App\Http\Controllers\DivisiController;
 use App\Http\Controllers\KategoriController;
+use App\Http\Controllers\LokasiController;
+use App\Http\Controllers\BarangController;
+use App\Http\Controllers\JenisController;
+use App\Http\Controllers\SumberController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -41,7 +45,40 @@ Route::middleware('auth')->group(function () {
     ->name('divisi.destroy');
     Route::get('/kategori', [KategoriController::class, 'index'])->name('kategori.index');
     Route::post('/kategori/store', [KategoriController::class, 'store'])->name('kategori.store');
-
+    Route::put('/kategori/{id}', [KategoriController::class, 'update'])
+    ->name('kategori.update');
+    Route::delete('/kategori/{id}', [KategoriController::class, 'destroy'])
+    ->name('kategori.destroy');
+    Route::get('/lokasi', [LokasiController::class, 'index'])->name('lokasi.index');
+    Route::post('/lokasi/store', [LokasiController::class, 'store'])->name('lokasi.store');
+    Route::put('/lokasi/{id}', [LokasiController::class, 'update'])
+    ->name('lokasi.update');
+    Route::delete('/lokasi/{id}', [LokasiController::class, 'destroy'])
+    ->name('lokasi.destroy');
+    Route::post('/master/lokasi/import', [LokasiController::class, 'import'])
+    ->name('lokasi.import');
+    Route::get('/barang', [BarangController::class, 'index'])->name('barang.index');
+    Route::post('/barang/store', [BarangController::class, 'store'])->name('barang.store');
+    Route::put('/barang/{id}', [BarangController::class, 'update'])
+    ->name('barang.update');
+    Route::delete('/barang/{id}', [BarangController::class, 'destroy'])
+    ->name('barang.destroy');
+    Route::post('/master/barang/import', [BarangController::class, 'import'])
+    ->name('barang.import');
+    Route::get('/jenis', [JenisController::class, 'index'])->name('jenis.index');
+    Route::post('/jenis/store', [JenisController::class, 'store'])->name('jenis.store');
+    Route::put('/jenis/{id}', [JenisController::class, 'update'])
+    ->name('jenis.update');
+    Route::delete('/jenis/{id}', [JenisController::class, 'destroy'])
+    ->name('jenis.destroy');
+    Route::post('/master/jenis/import', [JenisController::class, 'import'])
+    ->name('jenis.import');
+    Route::get('/sumber', [SumberController::class, 'index'])->name('sumber.index');
+    Route::post('/sumber/store', [SumberController::class, 'store'])->name('sumber.store');
+    Route::put('/sumber/{id}', [SumberController::class, 'update'])
+    ->name('sumber.update');
+    Route::delete('/sumber/{id}', [SumberController::class, 'destroy'])
+    ->name('sumber.destroy');
 });
 
 

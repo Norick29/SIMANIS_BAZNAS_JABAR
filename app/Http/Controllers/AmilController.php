@@ -11,12 +11,25 @@ use Illuminate\Support\Facades\DB;
 
 class AmilController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $amil = Amil::with([
+        $query = Amil::with([
             'jabatan',
             'divisi' // kalau departemen relasi dari divisi
-        ])->paginate(10);
+        ]);
+
+        if ($request->filled('q')) {
+            $query->where('nia', 'like', '%' . $request->q . '%')
+                  ->orWhere('nama', 'like', '%' . $request->q . '%')
+                  ->orWhereHas('jabatan', function ($q) use ($request) {
+                      $q->where('nama_jabatan', 'like', '%' . $request->q . '%');
+                  })
+                  ->orWhereHas('divisi', function ($q) use ($request) {
+                      $q->where('nama_divisi', 'like', '%' . $request->q . '%');
+                  });
+        }
+
+        $amil = $query->paginate(10);
         $jabatan = Jabatan::all();
         $divisi = Divisi::all();
 
@@ -47,47 +60,75 @@ class AmilController extends Controller
 
     public function import(Request $request)
 {
+    if (Jabatan::count() === 0 || Divisi::count() === 0) {
+    return back()->with(
+        'error',
+        'Import gagal. Data master Jabatan atau Divisi masih kosong.'
+    );
+}
+
     $request->validate([
         'file' => 'required|mimes:xls,xlsx'
     ]);
 
-    $file = $request->file('file');
-    $spreadsheet = IOFactory::load($file->getPathname());
-    $sheet = $spreadsheet->getActiveSheet();
-    $rows = $sheet->toArray();
+    $rows = IOFactory::load(
+        $request->file('file')->getPathname()
+    )->getActiveSheet()->toArray();
 
     DB::beginTransaction();
+
+    $duplicates = [];
+    $skipped    = [];
+    $inserted   = 0;
 
     try {
         foreach ($rows as $index => $row) {
 
-            // skip header
             if ($index === 0) continue;
 
-            [$nia, $nama, $namaJabatan, $namaDivisi, $namaDept] = $row;
+            [$nia, $nama, $namaJabatan, $namaDivisi, $namaDept] = array_map('trim', $row);
 
-            if (!$nia || !$nama) continue;
-
-            $jabatan = jabatan::where('nama_jabatan', $namaJabatan)->first();
-            $divisi  = divisi::where('nama_divisi', $namaDivisi)->first();
-
-            // skip jika relasi tidak ditemukan
-            if (!$jabatan || !$divisi) {
+            if (!$nia || !$nama) {
+                $skipped[] = "Baris ".($index+1)." : NIA / Nama kosong";
                 continue;
             }
 
-            amil::create([
+            // cek duplikasi NIA
+            if (Amil::where('nia', $nia)->exists()) {
+                $duplicates[] = "NIA $nia (baris ".($index+1).")";
+                continue;
+            }
+
+            $jabatan = Jabatan::whereRaw('LOWER(nama_jabatan) = ?', [strtolower($namaJabatan)])->first();
+            $divisi  = Divisi::whereRaw('LOWER(nama_divisi) = ?', [strtolower($namaDivisi)])->first();
+
+            if (!$jabatan || !$divisi) {
+                $skipped[] = "Baris ".($index+1)." : Jabatan / Divisi tidak ditemukan";
+                continue;
+            }
+
+            Amil::create([
                 'nia'        => $nia,
                 'nama'       => $nama,
                 'id_jabatan' => $jabatan->id_jabatan,
                 'id_divisi'  => $divisi->id_divisi,
-                'nama_dept'  => $namaDept,
+                'nama_dept'  => $namaDept ?: null,
             ]);
+
+            $inserted++;
         }
 
         DB::commit();
 
-        return back()->with('success', 'Import data amil berhasil');
+        if ($duplicates || $skipped) {
+            return back()->with([
+                'warning'    => "Import selesai. $inserted data berhasil disimpan.",
+                'duplicates' => array_merge($duplicates, $skipped),
+            ]);
+        }
+
+        return back()->with('success', "Import berhasil ($inserted data)");
+
     } catch (\Exception $e) {
         DB::rollBack();
         return back()->with('error', 'Import gagal: ' . $e->getMessage());

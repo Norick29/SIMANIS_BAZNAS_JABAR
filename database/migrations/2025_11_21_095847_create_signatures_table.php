@@ -13,17 +13,16 @@ return new class extends Migration
     {
         Schema::create('signatures', function (Blueprint $table) {
             $table->id('id_signature');
-            $table->string('resource_type', 50);
-            $table->unsignedBigInteger('resource_id');
+            $table->unsignedBigInteger('id_aset');
             $table->unsignedBigInteger('user_id');
             $table->text('signature');
             $table->string('public_key_fingerprint', 128)->nullable();
             $table->string('algorithm', 64)->default('RSA-2048-SHA256');
             $table->timestamp('signed_at')->useCurrent();
             $table->timestamps();
-            $table->softDeletes();
 
             $table->foreign('user_id')->references('id_user')->on('users')->onUpdate('cascade')->onDelete('cascade');
+            $table->foreign('id_aset')->references('id_aset')->on('assets')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 

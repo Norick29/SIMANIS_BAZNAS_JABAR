@@ -50,8 +50,8 @@
                         <tr class="text-center">
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $d->nama_divisi }}</td>
-                            <td>{{ $d->created_at }}</td>
-                            <td>{{ $d->updated_at }}</td>
+                            <td>{{ $d->created_at->format('d M Y') }}</td>
+                            <td>{{ $d->updated_at->diffForHumans() }}</td>
                             <td>
                                 <button class="btn btn-warning btn-sm"
                                     data-toggle="modal"
