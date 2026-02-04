@@ -65,7 +65,7 @@
                     <div id="asset" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner rounded">
                             {{-- <h6 class="collapse-header"></h6> --}} 
-                            <a class="collapse-item" href="buttons.html">Data Asset</a>
+                            <a class="collapse-item" href="{{ route('assets.index') }}">Data Asset</a>
                             <a class="collapse-item" href="buttons.html">Maintenance</a>
                             <a class="collapse-item" href="cards.html">Riwayat Pindah</a>
                         </div>

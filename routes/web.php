@@ -12,6 +12,7 @@ use App\Http\Controllers\LokasiController;
 use App\Http\Controllers\BarangController;
 use App\Http\Controllers\JenisController;
 use App\Http\Controllers\SumberController;
+use App\Http\Controllers\AssetController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -79,6 +80,8 @@ Route::middleware('auth')->group(function () {
     ->name('sumber.update');
     Route::delete('/sumber/{id}', [SumberController::class, 'destroy'])
     ->name('sumber.destroy');
+    Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
+    Route::post('/assets/store', [AssetController::class, 'store'])->name('assets.store');
 });
 
 
