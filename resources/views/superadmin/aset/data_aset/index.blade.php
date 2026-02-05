@@ -102,10 +102,14 @@
                             </td>
                             <td>
                                 {{-- DETAIL --}}
-                                <a href="#"
-                                   class="btn btn-info btn-sm">
-                                    <i class="fas fa-eye"></i>
-                                </a>
+                                <button 
+                                class="btn btn-info btn-sm"
+                                data-toggle="modal"
+                                data-target="#modalDetailAset"
+                                data-aset='@json($aset)'
+                                >
+                                <i class="fas fa-eye"></i>
+                                </button>
 
                                 {{-- EDIT --}}
                                 <a href="#"

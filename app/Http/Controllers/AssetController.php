@@ -12,7 +12,8 @@ use App\Models\Amil;
 use App\Models\Sumber;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Writer\PngWriter;
 
 class AssetController extends Controller
 {
@@ -111,12 +112,23 @@ public function store(Request $request)
         /* ==========================
          * 4. GENERATE QR CODE
          * ========================== */
+        $qrDirectory = public_path('qr-assets');
+
+        if (!file_exists($qrDirectory)) {
+            mkdir($qrDirectory, 0755, true);
+        }
+        
         $qrFileName = 'qr_' . Str::uuid() . '.png';
         $qrPath     = 'qr-assets/' . $qrFileName;
 
-        QrCode::format('png')
+        $result = Builder::create()
+            ->writer(new PngWriter())
+            ->data($kodeAset)
             ->size(300)
-            ->generate($kodeAset, public_path($qrPath));
+            ->margin(5)
+            ->build();
+
+        $result->saveToFile(public_path($qrPath));
 
         /* ==========================
          * 5. SIMPAN DATA
