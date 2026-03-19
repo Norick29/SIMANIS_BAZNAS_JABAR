@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('approvals', function (Blueprint $table) {
             $table->id('id_approval');
-            $table->uuid('id_pindah');
+            $table->unsignedBigInteger('id_pindah');
             $table->string('resource_type', 50);
             $table->unsignedBigInteger('resource_id');
             $table->enum('status', ['menunggu', 'disetujui', 'ditolak'])->default('menunggu');

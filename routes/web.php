@@ -82,6 +82,8 @@ Route::middleware('auth')->group(function () {
     ->name('sumber.destroy');
     Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
     Route::post('/assets/store', [AssetController::class, 'store'])->name('assets.store');
+    Route::post('assets/pindah', [AssetController::class, 'pindahAset'])->name('assets.pindah');
+
 });
 
 

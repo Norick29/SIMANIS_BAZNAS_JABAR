@@ -20,10 +20,10 @@
                     <div class="row">
                         <div class="col-md-6 mb-2">
                             <label>Barang</label>
-                            <select name="id_barang" class="form-control" required>
+                            <select name="id_barang" class="form-control select-barang" required>
                                 <option value="">-- Pilih Barang --</option>
                                 @foreach ($barangs as $b)
-                                    <option value="{{ $b->id_barang }}">{{ $b->nama_barang }}</option>
+                                    <option value="{{ $b->id_barang }}">{{ $b->kode_barang }} - {{ $b->nama_barang }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -33,37 +33,37 @@
                             <select name="id_kategori" class="form-control" required>
                                 <option value="">-- Pilih Kategori --</option>
                                 @foreach ($kategoris as $k)
-                                    <option value="{{ $k->id_kategori }}">{{ $k->nama_kategori }}</option>
+                                    <option value="{{ $k->id_kategori }}">{{ $k->kode_kategori }} - {{ $k->nama_kategori }}</option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="col-md-6 mb-2">
                             <label>Jenis</label>
-                            <select name="id_jenis" class="form-control" required>
+                            <select name="id_jenis" class="form-control select-jenis" required>
                                 <option value="">-- Pilih Jenis --</option>
                                 @foreach ($jenis as $j)
-                                    <option value="{{ $j->id_jenis }}">{{ $j->nama_jenis }}</option>
+                                    <option value="{{ $j->id_jenis }}">{{ $j->kode_jenis }} - {{ $j->nama_jenis }}</option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="col-md-6 mb-2">
                             <label>Lokasi</label>
-                            <select name="id_lokasi" class="form-control" required>
+                            <select name="id_lokasi" class="form-control select-lokasi" required>
                                 <option value="">-- Pilih Lokasi --</option>
                                 @foreach ($lokasis as $l)
-                                    <option value="{{ $l->id_lokasi }}">{{ $l->nama_lokasi }}</option>
+                                    <option value="{{ $l->id_lokasi }}">{{ $l->kode_lokasi }} - {{ $l->nama_lokasi }}</option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="col-md-6 mb-2">
                             <label>Penanggung Jawab (Amil)</label>
-                            <select name="id_amil" class="form-control" required>
+                            <select name="id_amil" class="form-control select-amil" required>
                                 <option value="">-- Pilih Amil --</option>
                                 @foreach ($amils as $a)
-                                    <option value="{{ $a->id_amil }}">{{ $a->nama }}</option>
+                                    <option value="{{ $a->id_amil }}">{{ $a->nia }} - {{ $a->nama }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -125,7 +125,7 @@
                         </div>
 
                         <div class="col-md-6 mb-2">
-                            <label>Status</label>
+                            <label>Status</label>   
                             <select name="status" class="form-control">
                                 <option value="aktif">Aktif</option>
                                 <option value="nonaktif">Nonaktif</option>
@@ -172,9 +172,44 @@
     
     document.getElementById('volume').addEventListener('input', hitungTotal);
     document.getElementById('harga').addEventListener('input', hitungTotal);
+
+    // $('#createAssetModal').on('shown.bs.modal', function () { generateKodeAset(); });
     
+    document.addEventListener('DOMContentLoaded', function () {
+
     $('#createAssetModal').on('shown.bs.modal', function () {
-        generateKodeAset();
+
+            $('.select-barang').select2({
+                theme: 'bootstrap4',
+                placeholder: 'Cari barang...',
+                width: '100%',
+                dropdownParent: $('#createAssetModal')
+            });
+
+            $('.select-jenis').select2({
+                theme: 'bootstrap4',
+                placeholder: 'Cari jenis...',
+                width: '100%',
+                dropdownParent: $('#createAssetModal')
+            });
+
+            $('.select-lokasi').select2({
+                theme: 'bootstrap4',
+                placeholder: 'Cari lokasi...',
+                width: '100%',
+                dropdownParent: $('#createAssetModal')
+            });
+
+            $('.select-amil').select2({
+                theme: 'bootstrap4',
+                placeholder: 'Cari penanggung jawab...',
+                width: '100%',
+                dropdownParent: $('#createAssetModal')
+            });
+
+        });
+
     });
-    </script>
+</script>
+
     

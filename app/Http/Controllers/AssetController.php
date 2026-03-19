@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Writer\PngWriter;
+use App\Models\PindahAset;
 
 class AssetController extends Controller
 {
@@ -84,25 +85,32 @@ public function store(Request $request)
          * 2. GENERATE KODE ASET FIX
          * ========================== */
 
-        // Ambil kode masing-masing master (asumsi ada field kode_xxx)
-        $kodeLokasi   = str_pad($request->id_lokasi, 2, '0', STR_PAD_LEFT);
-        $kodeKategori = str_pad($request->id_kategori, 2, '0', STR_PAD_LEFT);
-        $kodeJenis    = str_pad($request->id_jenis, 2, '0', STR_PAD_LEFT);
-        $kodeBarang   = str_pad($request->id_barang, 2, '0', STR_PAD_LEFT);
+        // Ambil data master
+        $barang   = Barang::findOrFail($request->id_barang);
+        $kategori = Kategori::findOrFail($request->id_kategori);
+        $jenis    = Jenis::findOrFail($request->id_jenis);
+        $lokasi   = Lokasi::findOrFail($request->id_lokasi);
+        $sumber   = Sumber::findOrFail($request->id_sumber_dana);
 
-        // Sumber dana (A/B/C)
-        $kodeSumber = chr(64 + ($request->id_sumber_dana)); // A, B, C
+        // Ambil KODE BUKAN ID
+        $kodeLokasi   = str_pad($lokasi->kode_lokasi, 2, '0', STR_PAD_LEFT);
+        $kodeKategori = str_pad($kategori->kode_kategori, 2, '0', STR_PAD_LEFT);
+        $kodeJenis    = str_pad($jenis->kode_jenis, 2, '0', STR_PAD_LEFT);
+        $kodeBarang   = str_pad($barang->kode_barang, 2, '0', STR_PAD_LEFT);
+
+        // Sumber dana (pakai kode, bukan asumsi A/B/C)
+        $kodeSumber = $sumber->kode_sumber_dana;
 
         // Tahun pembelian
         $tahun = substr($request->tahun, 2, 2);
 
-        // Nomor urut registrasi
-        $lastUrut = Asset::whereYear('created_at', $request->tahun)
-            ->count() + 1;
-
+        // Nomor urut
+        $lastUrut = Asset::whereYear('created_at', $request->tahun)->count() + 1;
         $urut = str_pad($lastUrut, 3, '0', STR_PAD_LEFT);
 
+        // Final kode aset
         $kodeAset = "{$kodeLokasi}.{$kodeKategori}.{$kodeJenis}.{$kodeBarang}.{$kodeSumber}.{$tahun}.{$urut}";
+
 
         /* ==========================
          * 3. HITUNG TOTAL HARGA
@@ -168,5 +176,53 @@ public function store(Request $request)
             ->with('error', 'Gagal menyimpan data aset: ' . $e->getMessage());
     }
 }
+
+public function pindahAset(Request $request)
+{
+    $request->validate([
+        'id_aset'          => 'required|exists:assets,id_aset',
+        'id_amil_sesudah'  => 'required|exists:amils,id_amil',
+        'id_lokasi_baru'   => 'required|exists:lokasis,id_lokasi',
+        'alasan'           => 'nullable|string|max:255',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+
+        $aset = Asset::findOrFail($request->id_aset);
+
+        // simpan riwayat pindah
+        PindahAset::create([
+            'id_aset'         => $aset->id_aset,
+            'id_amil_sebelum' => $aset->id_amil,
+            'id_amil_sesudah' => $request->id_amil_sesudah,
+            'id_lokasi_baru'  => $request->id_lokasi_baru,
+            'alasan'          => $request->alasan,
+            'status'          => 'selesai',
+        ]);
+
+        // update aset utama
+        $aset->update([
+            'id_amil'   => $request->id_amil_sesudah,
+            'id_lokasi' => $request->id_lokasi_baru,
+        ]);
+
+        DB::commit();
+
+        return redirect()
+            ->route('assets.index')
+            ->with('success', 'Aset berhasil dipindahkan.');
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return redirect()
+            ->back()
+            ->with('error', 'Gagal memindahkan aset: ' . $e->getMessage());
+    }
+}
+
 
 }

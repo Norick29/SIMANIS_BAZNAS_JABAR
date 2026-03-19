@@ -4,7 +4,45 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+
 class PindahAset extends Model
 {
-    //
+    protected $table = 'pindah_asets';
+    protected $primaryKey = 'id_pindah';
+    public $incrementing = true;
+
+
+    protected $fillable = [
+        'id_aset',
+        'id_amil_sebelum',
+        'id_amil_sesudah',
+        'id_lokasi_baru',
+        'alasan',
+        'status',
+    ];
+
+        /**
+        * =====================
+        * RELATIONSHIP
+        * =====================
+        */
+    public function aset()
+    {
+        return $this->belongsTo(Asset::class, 'id_aset');
+    }
+
+    public function amilSebelum()
+    {
+        return $this->belongsTo(Amil::class, 'id_amil_sebelum');
+    }
+
+    public function amilSesudah()
+    {
+        return $this->belongsTo(Amil::class, 'id_amil_sesudah');
+    }
+
+    public function lokasiBaru()
+    {
+        return $this->belongsTo(Lokasi::class, 'id_lokasi_baru');
+    }
 }

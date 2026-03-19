@@ -61,7 +61,7 @@
                             <th>Kategori</th>
                             <th>Jenis</th>
                             <th>Lokasi</th>
-                            <th>Amil</th>
+                            <th>Penanggung Jawab</th>
                             <th>Sumber Dana</th>
                             <th>Kondisi</th>
                             <th>Status</th>
@@ -102,13 +102,10 @@
                             </td>
                             <td>
                                 {{-- DETAIL --}}
-                                <button 
-                                class="btn btn-info btn-sm"
-                                data-toggle="modal"
-                                data-target="#modalDetailAset"
-                                data-aset='@json($aset)'
-                                >
-                                <i class="fas fa-eye"></i>
+                                <button class="btn btn-info btn-sm"
+                                    data-toggle="modal"
+                                    data-target="#detailAsetModal{{ $aset->id_aset }}">
+                                    <i class="fas fa-eye"></i>
                                 </button>
 
                                 {{-- EDIT --}}
@@ -154,5 +151,8 @@
 {{-- @include('assets.modal-import')
 @include('assets.modal-delete') --}}
 @include('superadmin.aset.data_aset.modal-create')
+@include('superadmin.aset.data_aset.modal-detail')
+
+
 
 @endsection
