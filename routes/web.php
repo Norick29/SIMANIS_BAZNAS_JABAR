@@ -13,6 +13,7 @@ use App\Http\Controllers\BarangController;
 use App\Http\Controllers\JenisController;
 use App\Http\Controllers\SumberController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\ApprovalController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -82,16 +83,60 @@ Route::middleware('auth')->group(function () {
     ->name('sumber.destroy');
     Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
     Route::post('/assets/store', [AssetController::class, 'store'])->name('assets.store');
+    Route::put('/assets/{id}', [AssetController::class, 'update'])->name('assets.update');
+    Route::delete('/assets/{id}', [AssetController::class, 'destroy'])->name('assets.destroy');
     Route::post('assets/pindah', [AssetController::class, 'pindahAset'])->name('assets.pindah');
+    Route::get('/assets/{id}', [AssetController::class, 'show'])->name('assets.show');
+    // Route khusus untuk scan QR code
+    
+    Route::get('/assets/referensi-data', [AssetController::class, 'getReferensiData']);
+    Route::get('/assets/referensi-pindah', [AssetController::class, 'getReferensiPindah']);
+    Route::post('/assets/verify-login', [AssetController::class, 'verifyLogin'])->name('assets.verify-login');
+    Route::post('/assets/pindah', [AssetController::class, 'pindahAset'])->name('assets.pindah');
 
+    // Approval Routes
+    Route::resource('approvals', ApprovalController::class)->only(['index', 'show']);
+    Route::post('/approvals/{id}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+    Route::post('/approvals/{id}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
 });
 
+Route::get('/riwayat-pindah-aset', [ApprovalController::class, 'riwayatPindah'])
+    ->name('riwayat.pindah');
+Route::get('/berita-acara/{id}', 
+    [ApprovalController::class, 'showBeritaAcara']
+)->name('berita-acara.show');
 
+Route::get('/scan/{kode_aset}', [AssetController::class, 'scanQr'])->name('assets.scan') ->middleware('signed');
 
 Route::middleware(['auth', SuperAdminMiddleware::class])->group(function () {
     // Add owner-only routes here
     Route::resource('users', UserController::class);
-    
+    Route::get('/users/{id}/download-private-key', [UserController::class, 'downloadPrivateKey'])->name('users.download-private-key');
+});
+
+Route::get('/test-rsa', function () {
+
+    $config = [
+        "digest_alg" => "sha256",
+        "private_key_bits" => 2048,
+        "private_key_type" => OPENSSL_KEYTYPE_RSA,
+        "config" => "C:/xampp/php/extras/ssl/openssl.cnf",
+    ];
+
+    $res = openssl_pkey_new($config);
+
+    if (!$res) {
+
+        echo "<h1>ERROR OPENSSL</h1>";
+
+        while ($msg = openssl_error_string()) {
+            echo $msg . "<br>";
+        }
+
+        return;
+    }
+
+    echo "RSA KEY BERHASIL DIBUAT";
 });
 
 require __DIR__.'/auth.php';

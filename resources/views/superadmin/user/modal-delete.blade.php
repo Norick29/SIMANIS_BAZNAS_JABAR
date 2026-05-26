@@ -1,5 +1,5 @@
 @foreach ($users as $user)
-<div class="modal fade" id="deleteUserModal{{ $user->id_user }}" tabindex="-1">
+<div class="modal fade" id="deleteUser{{ $user->id_user }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow">
 
@@ -29,6 +29,11 @@
                         {{ $user->name }}
                     </h5>
 
+                    <small class="text-muted">
+                        Email: {{ $user->email }}<br>
+                        Role: {{ $user->role }}
+                    </small>
+
                     <div class="alert alert-warning mt-3">
                         Data yang sudah dihapus <b>tidak dapat dikembalikan</b>.
                     </div>
@@ -39,7 +44,7 @@
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="fas fa-times"></i> Batal
                     </button>
-                    <button class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash"></i> Ya, Hapus
                     </button>
                 </div>

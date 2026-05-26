@@ -1,0 +1,156 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container-fluid">
+    
+    {{-- HEADER --}}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 text-gray-800 mb-0">Hasil Scan QR Code</h1>
+                    <p class="text-muted small">Informasi lengkap aset yang di-scan</p>
+                </div>
+                <a href="{{ route('assets.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- CARD DETAIL ASET --}}
+    <div class="card shadow">
+        <div class="card-header bg-success text-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0">
+                <i class="fas fa-box"></i> Detail Aset
+            </h5>
+            <button type="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#verifyLoginModal">
+                <i class="fas fa-exchange-alt"></i> Pindah Aset
+            </button>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                {{-- QR CODE SECTION --}}
+                <div class="col-md-3 text-center border-right">
+                    @if ($aset->qr_code)
+                        <img src="{{ asset($aset->qr_code) }}" class="img-thumbnail" 
+                             style="max-width: 200px; margin-bottom: 15px;" alt="QR Code Aset">
+                    @endif
+                    <div class="text-muted">
+                        <small>QR Code</small>
+                    </div>
+                    <p class="font-weight-bold text-success mt-2">{{ $aset->kode_aset }}</p>
+                </div>
+
+                {{-- DATA ASET SECTION --}}
+                <div class="col-md-9">
+                    <div class="row">
+                        {{-- ROW 1 --}}
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Barang</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->barang->nama_barang ?? '-' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Merk</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->merk ?? '-' }}</p>
+                        </div>
+
+                        {{-- ROW 2 --}}
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Tahun Pembelian</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->tahun ?? '-' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Kategori</h6>
+                            <p class="mb-0">
+                                <span class="badge badge-primary">{{ $aset->kategori->nama_kategori ?? '-' }}</span>
+                            </p>
+                        </div>
+
+                        {{-- ROW 3 --}}
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Jenis</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->jenis->nama_jenis ?? '-' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Kondisi</h6>
+                            <p class="mb-0">
+                                <span class="badge badge-{{ $aset->kondisi == 'baik' ? 'success' : ($aset->kondisi == 'rusak' ? 'warning' : 'danger') }}">
+                                    {{ ucfirst($aset->kondisi) }}
+                                </span>
+                            </p>
+                        </div>
+
+                        {{-- ROW 4 --}}
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Volume</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->volume ?? '-' }} {{ $aset->satuan ?? '' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Status</h6>
+                            <p class="mb-0">
+                                <span class="badge badge-{{ $aset->status == 'aktif' ? 'primary' : 'secondary' }}">
+                                    {{ ucfirst($aset->status) }}
+                                </span>
+                            </p>
+                        </div>
+
+                        {{-- ROW 5 --}}
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Harga Satuan</h6>
+                            <p class="mb-0 font-weight-bold">Rp {{ number_format($aset->harga, 0, ',', '.') ?? '-' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted small mb-1">Total Harga</h6>
+                            <p class="mb-0 font-weight-bold text-success">Rp {{ number_format($aset->total_harga, 0, ',', '.') ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    {{-- INFORMASI LOKASI & PENANGGUNG JAWAB --}}
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-muted small mb-1">Lokasi</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->lokasi->nama_lokasi ?? '-' }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted small mb-1">Penanggung Jawab</h6>
+                            <p class="mb-0 font-weight-bold">{{ $aset->amil->nama ?? '-' }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted small mb-1">Sumber Dana</h6>
+                            <p class="mb-0">
+                                <span class="badge badge-info">{{ $aset->sumberDana->nama_sumber_dana ?? '-' }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- CARD FOOTER dengan ACTION BUTTONS --}}
+        <div class="card-footer bg-light d-flex justify-content-between">
+            <div>
+                <small class="text-muted">
+                    Dibuat pada: <strong>{{ $aset->created_at->format('d M Y H:i') }}</strong>
+                </small>
+            </div>
+            <div>
+                <a href="{{ route('assets.index') }}" class="btn btn-sm btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Kembali ke Daftar
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{{-- MODAL VERIFY LOGIN --}}
+@include('superadmin.aset.data_aset.modal-verify-login')
+
+{{-- MODAL PINDAH ASET --}}
+@include('superadmin.aset.data_aset.modal-pindah-form')
+
+@endsection

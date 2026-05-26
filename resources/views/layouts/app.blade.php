@@ -62,6 +62,11 @@
     </div>
     <!-- End of Page Wrapper -->
 
+    {{-- Modals Section --}}
+    @hasSection('modals')
+        @yield('modals')
+    @endif
+
     <!-- Scroll to Top Button-->
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
@@ -93,11 +98,13 @@
         </div>
     </div>
 
+    <!-- Bootstrap JS (includes jQuery) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
     
-
-    <!-- Bootstrap core JavaScript-->
-    <script src="{{ asset('/') }}sbadmin2/vendor/jquery/jquery.min.js"></script>
-    <script src="{{ asset('/') }}sbadmin2/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap4.min.js"></script>
 
     <!-- Core plugin JavaScript-->
     <script src="{{ asset('/') }}sbadmin2/vendor/jquery-easing/jquery.easing.min.js"></script>

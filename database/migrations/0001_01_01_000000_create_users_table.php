@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('no_hp', 20)->nullable();
             $table->enum('role', ['super admin', 'kadiv', 'kadept', 'staf'])->default('staf');
             $table->text('public_key')->nullable(); // untuk RSA
+            // $table->text('private_key')->nullable(); // untuk RSA
             $table->timestamps();
             $table->softDeletes();
         });

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class lokasi extends Model
+class Lokasi extends Model
 {
     protected $table = 'lokasis';
     protected $primaryKey = 'id_lokasi';

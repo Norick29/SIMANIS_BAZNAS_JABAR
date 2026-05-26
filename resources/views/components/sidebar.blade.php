@@ -67,16 +67,11 @@
                             {{-- <h6 class="collapse-header"></h6> --}} 
                             <a class="collapse-item" href="{{ route('assets.index') }}">Data Asset</a>
                             <a class="collapse-item" href="buttons.html">Maintenance</a>
-                            <a class="collapse-item" href="cards.html">Riwayat Pindah</a>
+                            <a class="collapse-item" href="{{ route('riwayat.pindah') }}">Riwayat Pindah</a>
                         </div>
                     </div>
                 </li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('users.index') }}">
-                        <i class="fas fa-fw fa-check"></i>
-                        <span>Approval</span></a>
-                </li>
 
                 <!-- Divider -->
                 <hr class="sidebar-divider">
@@ -136,56 +131,6 @@
 
                 <!-- Heading -->
                 <div class="sidebar-heading">
-                    Transaction Stock
-                </div>
-
-                <!-- Nav Item - Pages Collapse Menu -->
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#transaction"
-                        aria-expanded="true" aria-controls="transaction">
-                        <i class="fas fa-fw fa-inbox"></i>
-                        <span>Transaction Stock</span>
-                    </a>
-                    <div id="transaction" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-                        <div class="bg-white py-2 collapse-inner rounded">
-                            {{-- <h6 class="collapse-header"></h6> --}} 
-                            <a class="collapse-item" href="#">Opening Stock</a>
-                            <a class="collapse-item" href="#">Stock IN</a>
-                            <a class="collapse-item" href="#">Stock OUT</a>
-                            <a class="collapse-item" href="#">Stock ADJUST</a>
-                        </div>
-                    </div>
-                </li>
-
-                <!-- Divider -->
-                <hr class="sidebar-divider">
-
-                <!-- Heading -->
-                <div class="sidebar-heading">
-                    Notes
-                </div>
-
-                <!-- Nav Item - Pages Collapse Menu -->
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#notes"
-                        aria-expanded="true" aria-controls="notes">
-                        <i class="fas fa-fw fa-clipboard"></i>
-                        <span>Notes</span>
-                    </a>
-                    <div id="notes" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
-                        <div class="bg-white py-2 collapse-inner rounded">
-                            {{-- <h6 class="collapse-header"></h6> --}} 
-                            <a class="collapse-item" href="buttons.html">Daily Notes</a>
-                            <a class="collapse-item" href="#">Shipments</a>
-                        </div>
-                    </div>
-                </li>
-
-                <!-- Divider -->
-                <hr class="sidebar-divider">
-
-                <!-- Heading -->
-                <div class="sidebar-heading">
                     Report
                 </div>
 
@@ -207,6 +152,22 @@
                 </li>
 
             @endif
+
+            {{-- MENU APPROVAL --}}
+                @if (
+                    auth()->user()->role == 'super admin' ||
+                    auth()->user()->role == 'kadept' ||
+                    auth()->user()->role == 'kadiv'
+                )
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('approvals.index') }}">
+                        <i class="fas fa-fw fa-clipboard-check"></i>
+                        <span>Approval</span>
+                    </a>
+                </li>
+
+                @endif
 
             {{-- <!-- Heading -->
             <div class="sidebar-heading">

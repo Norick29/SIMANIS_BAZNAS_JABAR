@@ -102,22 +102,27 @@
                             </td>
                             <td>
                                 {{-- DETAIL --}}
-                                <button class="btn btn-info btn-sm"
+                                <button class="btn btn-info btn-sm btn-detail-aset"
                                     data-toggle="modal"
-                                    data-target="#detailAsetModal{{ $aset->id_aset }}">
+                                    data-target="#detailAsetModal"
+                                    data-id="{{ $aset->id_aset }}">
                                     <i class="fas fa-eye"></i>
                                 </button>
 
                                 {{-- EDIT --}}
-                                <a href="#"
-                                   class="btn btn-warning btn-sm">
+                                <button type="button"
+                                    class="btn btn-warning btn-sm btn-edit-asset"
+                                    data-toggle="modal"
+                                    data-target="#editAssetModal"
+                                    data-id="{{ $aset->id_aset }}">
                                     <i class="fas fa-edit"></i>
-                                </a>
+                                </button>
 
                                 {{-- DELETE --}}
                                 <button class="btn btn-danger btn-sm"
                                     data-toggle="modal"
-                                    data-target="#deleteAssetModal{{ $aset->id_aset }}">
+                                    data-target="#deleteAssetModal"
+                                    data-id="{{ $aset->id_aset }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -152,7 +157,121 @@
 @include('assets.modal-delete') --}}
 @include('superadmin.aset.data_aset.modal-create')
 @include('superadmin.aset.data_aset.modal-detail')
-
-
+@include('superadmin.aset.data_aset.modal-edit')
+@include('superadmin.aset.data_aset.modal-delete')
 
 @endsection
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    // =========================================
+    // DETAIL ASET
+    // =========================================
+    $('.btn-detail-aset').on('click', function () {
+
+        let id = $(this).data('id');
+
+        fetch(`/assets/${id}`)
+
+            .then(response => response.json())
+
+            .then(data => {
+
+                // DETAIL
+                $('#d_kode').text(data.kode_aset || '-');
+                $('#d_barang').text(data.barang || '-');
+                $('#d_merk').text(data.merk || '-');
+                $('#d_tahun').text(data.tahun || '-');
+                $('#d_volume').text(data.volume || '-');
+                $('#d_satuan').text(data.satuan || '-');
+                $('#d_kondisi').text(data.kondisi || '-');
+                $('#d_status').text(data.status || '-');
+                $('#d_harga').text(data.harga || '-');
+                $('#d_total').text(data.total_harga || '-');
+                $('#d_kategori').text(data.kategori || '-');
+                $('#d_jenis').text(data.jenis || '-');
+                $('#d_lokasi').text(data.lokasi || '-');
+                $('#d_amil').text(data.amil || '-');
+                $('#d_sumber').text(data.sumber_dana || '-');
+
+                // QR
+                if (data.qr_code) {
+
+                    $('#detail_qr')
+                        .attr('src', data.qr_code)
+                        .show();
+
+                } else {
+
+                    $('#detail_qr').hide();
+
+                }
+
+                // SIMPAN DATA KE BUTTON PINDAH
+                $('#btnPindahAset')
+                    .attr('data-id-aset', data.id_aset)
+                    .attr('data-kode-aset', data.kode_aset)
+                    .attr('data-barang', data.barang)
+                    .attr('data-lokasi', data.lokasi)
+                    .attr('data-amil', data.amil);
+
+                // SHOW MODAL
+                $('#detailAsetModal').modal('show');
+
+            })
+
+            .catch(error => {
+
+                console.error(error);
+
+                alert('Gagal memuat detail aset');
+
+            });
+
+    });
+
+
+    // =========================================
+    // PINDAH ASET
+    // =========================================
+    $(document).on('click', '#btnPindahAset', function () {
+
+        let idAset = $(this).attr('data-id-aset');
+
+        let kodeAset = $(this).attr('data-kode-aset');
+
+        let barang = $(this).attr('data-barang');
+
+        let lokasi = $(this).attr('data-lokasi');
+
+        let amil = $(this).attr('data-amil');
+
+        // INJECT DATA KE MODAL PINDAH
+        $('#pindah_id_aset').val(idAset);
+
+        $('#p_kode_aset').text(kodeAset);
+
+        $('#p_barang').text(barang);
+
+        $('#p_lokasi').text(lokasi);
+
+        $('#p_amil').text(amil);
+
+        // TUTUP DETAIL
+        $('#detailAsetModal').modal('hide');
+
+        // TUNGGU MODAL DETAIL TERTUTUP
+        $('#detailAsetModal').one('hidden.bs.modal', function () {
+
+            // SHOW MODAL PINDAH
+            $('#pindahFormModal').modal('show');
+
+        });
+
+    });
+
+});
+
+</script>
