@@ -48,4 +48,13 @@ class PindahAset extends Model
     {
         return $this->belongsTo(User::class, 'requested_by', 'id_user');
     }
+
+    public function signatures()
+    {
+        return $this->hasMany(
+            Signature::class,
+            'id_pindah',
+            'id_pindah'
+        );
+    }
 }

@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Models\PindahAset;
+use App\Models\Signature;
+use Barryvdh\DomPDF\Facade\Pdf;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ApprovalController extends Controller
 {
@@ -102,7 +105,32 @@ class ApprovalController extends Controller
             $approval->update([
                 'status' => 'disetujui',
                 'approved_by' => Auth::id(),
-                'approval_date' => now(),
+                'approved_at' => now(),
+            ]);
+
+            $pindah = $approval->pindahAset;
+
+            $digitalSignature = $this->generateDigitalSignature(
+                $pindah
+            );
+
+            Signature::create([
+                'id_aset' => $pindah->id_aset,
+                'id_pindah' => $pindah->id_pindah,
+                'user_id' => Auth::id(),
+
+                'signed_data' =>
+                    $digitalSignature['signed_data'],
+
+                'signature' =>
+                    $digitalSignature['signature'],
+
+                'public_key_fingerprint' =>
+                    $digitalSignature['fingerprint'],
+
+                'algorithm' => 'RSA-SHA256',
+
+                'signed_at' => now(),
             ]);
 
             /*
@@ -118,7 +146,7 @@ class ApprovalController extends Controller
                     'stage' => 2,
                     'status' => 'menunggu',
                     'approved_by' => null,
-                    'approval_date' => null,
+                    'approved_at' => null,
                 ]);
             }
 
@@ -196,8 +224,157 @@ class ApprovalController extends Controller
         ])->findOrFail($id);
 
         return view(
-            'superadmin.riwayat_pindah.berita-acara',
+            'superadmin.aset.riwayat_pindah.berita-acara',
             compact('pindah')
         );
     }
+
+    public function downloadBeritaAcaraPdf($id)
+    {
+        $pindah = PindahAset::with([
+            'asset.barang',
+            'asset.lokasi',
+            'amilSebelum',
+            'amilSesudah',
+            'lokasiBaru',
+            'approvals.approvedBy'
+        ])->findOrFail($id);
+
+        // GET SIGNATURES
+        $approvals = $pindah->approvals()
+            ->with('approvedBy')
+            ->where('status', 'disetujui')
+            ->get();
+
+        $kadeptSignature = null;
+        $kadivSignature = null;
+
+        // Cari Kadept approval
+        foreach ($approvals as $approval) {
+            if ($approval->stage == 1 && $approval->approvedBy) {
+                $kadeptSignature = $approval;
+                break;
+            }
+        }
+
+        // Cari Kadiv approval
+        foreach ($approvals as $approval) {
+            if ($approval->stage == 2 && $approval->approvedBy) {
+                $kadivSignature = $approval;
+                break;
+            }
+        }
+
+        // GENERATE QR CODE UNTUK KADEPT
+        $qrKadept = null;
+        if ($kadeptSignature) {
+            $qrData = json_encode([
+                'approval_id' => $kadeptSignature->id_approval,
+                'stage' => 'Kepala Departemen',
+                'approved_by' => $kadeptSignature->approvedBy->name,
+                'approved_at' => optional(
+                    $kadeptSignature->approved_at
+                )->format('Y-m-d H:i:s'),
+                'kode_aset' => $pindah->asset->kode_aset,
+            ]);
+            
+            $qrKadept = base64_encode(
+                QrCode::format('png')
+                    ->size(150)
+                    ->generate($qrData)
+            );
+        }
+
+        // GENERATE QR CODE UNTUK KADIV
+        $qrKadiv = null;
+        if ($kadivSignature) {
+            $qrData = json_encode([
+                'approval_id' => $kadivSignature->id_approval,
+                'stage' => 'Kepala Divisi',
+                'approved_by' => $kadivSignature->approvedBy->name,
+                'approved_at' => optional(
+                    $kadivSignature->approved_at
+                )->format('Y-m-d H:i:s'),
+                'kode_aset' => $pindah->asset->kode_aset,
+            ]);
+            
+            $qrKadiv = base64_encode(
+                QrCode::format('png')
+                    ->size(150)
+                    ->generate($qrData)
+            );
+        }
+
+        // CONVERT LOGO IMAGE KE BASE64 (DOMPDF tidak bisa akses asset)
+        $logoPath = public_path('image/logo-baznas.png');
+        $logoBase64 = null;
+        
+        if (file_exists($logoPath)) {
+            $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath));
+        }
+
+        $pdf = Pdf::loadView(
+            'superadmin.aset.riwayat_pindah.berita-acara-pdf',
+            [
+                'pindah' => $pindah,
+                'qrKadept' => $qrKadept,
+                'qrKadiv' => $qrKadiv,
+                'kadeptSignature' => $kadeptSignature,
+                'kadivSignature' => $kadivSignature,
+                'logoBase64' => $logoBase64,
+            ]
+        );
+
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->setOption('isPhpEnabled', true);
+
+        return $pdf->download(
+            'Berita_Acara_' . 
+            $pindah->asset->kode_aset . 
+            '_' . 
+            now()->format('d-m-Y') . 
+            '.pdf'
+        );
+    }
+
+    private function generateDigitalSignature($pindah)
+{
+    $user = Auth::user();
+
+    $data = json_encode([
+        'id_pindah' => $pindah->id_pindah,
+        'kode_aset' => $pindah->asset->kode_aset,
+        'lokasi_lama' => $pindah->asset->lokasi->nama_lokasi,
+        'lokasi_baru' => $pindah->lokasiBaru->nama_lokasi,
+        'approved_by' => $user->name,
+        'approved_at' => now()->toDateTimeString(),
+    ]);
+
+    $privateKey = openssl_pkey_get_private(
+        $user->private_key
+    );
+
+    if (!$privateKey) {
+        throw new \Exception(
+            'Private key tidak valid'
+        );
+    }
+
+    openssl_sign(
+        $data,
+        $rawSignature,
+        $privateKey,
+        OPENSSL_ALGO_SHA256
+    );
+
+    return [
+        'signed_data' => $data,
+        'signature' => base64_encode(
+            $rawSignature
+        ),
+        'fingerprint' => sha1(
+            $user->public_key
+        )
+    ];
+}
 }

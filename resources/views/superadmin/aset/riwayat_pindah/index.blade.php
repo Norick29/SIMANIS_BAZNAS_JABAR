@@ -140,8 +140,12 @@
 
                                         <a href="{{ route('berita-acara.show', $item->id_pindah) }}"
                                         class="btn btn-success btn-sm">
-
                                             <i class="fas fa-file-alt"></i>
+                                        </a>
+
+                                        <a href="{{ route('berita-acara.pdf', $item->id_pindah) }}"
+                                        class="btn btn-danger btn-sm">
+                                            <i class="fas fa-file-pdf"></i>
                                         </a>
 
                                     @endif

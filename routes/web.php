@@ -98,13 +98,19 @@ Route::middleware('auth')->group(function () {
     Route::resource('approvals', ApprovalController::class)->only(['index', 'show']);
     Route::post('/approvals/{id}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('/approvals/{id}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
+
+    Route::get('/berita-acara/{id}', 
+    [ApprovalController::class, 'showBeritaAcara']
+)->name('berita-acara.show');
+Route::get(
+    '/berita-acara/{id}/pdf',
+    [ApprovalController::class, 'downloadBeritaAcaraPdf']
+)->name('berita-acara.pdf');
 });
 
 Route::get('/riwayat-pindah-aset', [ApprovalController::class, 'riwayatPindah'])
     ->name('riwayat.pindah');
-Route::get('/berita-acara/{id}', 
-    [ApprovalController::class, 'showBeritaAcara']
-)->name('berita-acara.show');
+
 
 Route::get('/scan/{kode_aset}', [AssetController::class, 'scanQr'])->name('assets.scan') ->middleware('signed');
 

@@ -7,17 +7,26 @@ use Illuminate\Database\Eloquent\Model;
 class Signature extends Model
 {
     protected $table = 'signatures';
-    protected $primaryKey = 'id_signature';
-    protected $guarded = ['id_signature'];
-    protected $dates = ['created_at', 'updated_at', 'signed_at'];
 
-    public function asset()
-    {
-        return $this->belongsTo(Asset::class, 'id_aset', 'id_aset');
-    }
+    protected $primaryKey = 'id_signature';
+
+    protected $fillable = [
+        'id_aset',
+        'id_pindah',
+        'user_id',
+        'signed_data',
+        'signature',
+        'public_key_fingerprint',
+        'algorithm',
+        'signed_at'
+    ];
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', 'id_user');
+        return $this->belongsTo(
+            User::class,
+            'user_id',
+            'id_user'
+        );
     }
 }
