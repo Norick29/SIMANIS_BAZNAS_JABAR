@@ -5,7 +5,9 @@
 <div class="container-fluid">
 
     {{-- Page Heading --}}
-    <h1 class="h3 mb-2 text-gray-800">Manajemen Kategori</h1>
+    <h1 class="h3 mb-2 text-gray-800">
+        <i class="fas fa-th-large mr-2"></i> Data Kategori Aset
+    </h1>
 
     {{-- Success Message --}}
     @if ($errors->any())
@@ -53,7 +55,8 @@
                 <i class="fas fa-plus"></i> Tambah Kategori
             </a>
 
-            <h6 class="m-0 font-weight-bold text-success">Daftar Kategori</h6>
+            <h6 class="m-0 font-weight-bold text-success">
+                <i class="fas fa-list"></i> Daftar Kategori</h6>
         </div>
 
         <div class="card-body">

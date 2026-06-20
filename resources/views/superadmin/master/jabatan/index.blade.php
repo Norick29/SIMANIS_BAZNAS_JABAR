@@ -4,7 +4,9 @@
 
 <div class="container-fluid">
 
-    <h1 class="h3 mb-2 text-gray-800">Manajemen Jabatan</h1> 
+    <h1 class="h3 mb-2 text-gray-800">
+        <i class="fas fa-id-badge mr-2"></i> Data Jabatan
+    </h1>
 
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -30,7 +32,8 @@
                data-target="#createJabatanModal">
                 <i class="fas fa-plus"></i> Tambah Jabatan
             </a>
-            <h6 class="m-0 font-weight-bold text-success">Daftar Jabatan</h6>
+            <h6 class="m-0 font-weight-bold text-success"> 
+                <i class="fas fa-list"></i> Daftar Jabatan</h6>
         </div>
 
         <div class="card-body">

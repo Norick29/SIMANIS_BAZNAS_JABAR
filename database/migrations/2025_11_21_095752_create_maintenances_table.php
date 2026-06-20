@@ -18,7 +18,7 @@ return new class extends Migration
             $table->text('deskripsi')->nullable();
             $table->string('durasi', 50)->nullable();
             $table->double('biaya')->default(0);
-            $table->enum('status', ['diproses', 'selesai'])->default('diproses');
+            $table->enum('status', ['proses', 'selesai'])->default('proses');
             $table->date('tanggal_mulai')->nullable();
             $table->date('tanggal_selesai')->nullable();
             $table->timestamps();

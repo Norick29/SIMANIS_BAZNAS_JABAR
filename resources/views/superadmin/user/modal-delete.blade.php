@@ -1,5 +1,5 @@
-@foreach ($users as $user)
-<div class="modal fade" id="deleteUser{{ $user->id_user }}" tabindex="-1">
+@foreach ($users as $u)
+<div class="modal fade" id="deleteUser{{ $u->id_user }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow">
 
@@ -15,7 +15,7 @@
             </div>
 
             {{-- FORM --}}
-            <form action="{{ route('users.destroy', $user->id_user) }}" method="POST">
+            <form action="{{ route('users.destroy', $u->id_user) }}" method="POST">
                 @csrf
                 @method('DELETE')
 
@@ -26,12 +26,12 @@
                     </p>
 
                     <h5 class="font-weight-bold text-danger">
-                        {{ $user->name }}
+                        {{ $u->name }}
                     </h5>
 
                     <small class="text-muted">
-                        Email: {{ $user->email }}<br>
-                        Role: {{ $user->role }}
+                        Email: {{ $u->email }}<br>
+                        Role: {{ $u->role }}
                     </small>
 
                     <div class="alert alert-warning mt-3">

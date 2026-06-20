@@ -16,98 +16,58 @@
                 @method('PUT')
 
                 <div class="modal-body">
+                    
+                    <div class="alert alert-light border p-2 mb-3" style="font-size: 11.5px;">
+                        <i class="fas fa-info-circle text-info"></i> Komponen utama (Barang, Kategori, Jenis, Lokasi, dan Sumber Dana) bersifat permanen karena terikat dengan susunan <strong>Kode Aset</strong>. Untuk memindahkan lokasi atau penanggung jawab, silakan gunakan menu resmi <strong>Perpindahan Aset</strong>.
+                    </div>
 
-                    {{-- ===== DATA REFERENSI ===== --}}
-                    <h6 class="font-weight-bold text-warning mb-2">Data Referensi</h6>
-
+                    {{-- ===== KODE ASET UTAMA ===== --}}
                     <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label>Barang</label>
-                            <select name="id_barang" id="edit_id_barang" class="form-control select-barang-edit" required>
-                                <option value="">-- Pilih Barang --</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Kategori</label>
-                            <select name="id_kategori" id="edit_id_kategori" class="form-control" required>
-                                <option value="">-- Pilih Kategori --</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Jenis</label>
-                            <select name="id_jenis" id="edit_id_jenis" class="form-control select-jenis-edit" required>
-                                <option value="">-- Pilih Jenis --</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Lokasi</label>
-                            <select name="id_lokasi" id="edit_id_lokasi" class="form-control select-lokasi-edit" required>
-                                <option value="">-- Pilih Lokasi --</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Penanggung Jawab (Amil)</label>
-                            <select name="id_amil" id="edit_id_amil" class="form-control select-amil-edit" required>
-                                <option value="">-- Pilih Amil --</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-6 mb-2">
-                            <label>Sumber Dana</label>
-                            <select name="id_sumber_dana" id="edit_id_sumber_dana" class="form-control" required>
-                                <option value="">-- Pilih Sumber Dana --</option>
-                            </select>
+                        <div class="col-md-12 mb-3">
+                            <label class="font-weight-bold">Kode Aset (Read-Only)</label>
+                            <input type="text" id="edit_kode_aset" class="form-control font-weight-bold bg-light text-success" style="font-size: 14px; letter-spacing: 0.5px;" readonly>
                         </div>
                     </div>
 
-                    <hr>
+                    <hr class="mt-0">
 
-                    {{-- ===== DATA ASET ===== --}}
-                    <h6 class="font-weight-bold text-warning mb-2">Detail Aset</h6>
+                    {{-- ===== DATA INFORMASI KOSMETIK YANG BOLEH DIEDIT ===== --}}
+                    <h6 class="font-weight-bold text-warning mb-3"><i class="fas fa-cubes"></i> Detail Informasi Aset</h6>
 
                     <div class="row">
-                        <div class="col-md-12 mb-2">
-                            <label>Kode Aset</label>
-                            <input type="text" id="edit_kode_aset" class="form-control" readonly>
-                        </div>
-
                         <div class="col-md-6 mb-2">
-                            <label>Merk</label>
-                            <input type="text" name="merk" id="edit_merk" class="form-control">
+                            <label>Merk / Tipe</label>
+                            <input type="text" name="merk" id="edit_merk" class="form-control" placeholder="Masukkan merk aset">
                         </div>
 
                         <div class="col-md-3 mb-2">
-                            <label>Tahun</label>
-                            <input type="text" name="tahun" id="edit_tahun" class="form-control" maxlength="4">
+                            <label>Tahun Otorisasi</label>
+                            <input type="text" name="tahun" id="edit_tahun" class="form-control bg-light" readonly>
                         </div>
 
                         <div class="col-md-3 mb-2">
-                            <label>Volume</label>
-                            <input type="number" name="volume" id="edit_volume" class="form-control" value="1" min="1">
+                            <label>Volume / Jumlah</label>
+                            <input type="number" name="volume" id="edit_volume" class="form-control" min="1" required>
                         </div>
 
                         <div class="col-md-4 mb-2">
                             <label>Satuan</label>
-                            <input type="text" name="satuan" id="edit_satuan" class="form-control">
+                            <input type="text" name="satuan" id="edit_satuan" class="form-control" placeholder="Misal: Unit, Pcs, Buah">
                         </div>
 
                         <div class="col-md-4 mb-2">
-                            <label>Harga</label>
-                            <input type="number" name="harga" id="edit_harga" class="form-control" min="0">
+                            <label>Harga Satuan</label>
+                            <input type="number" name="harga" id="edit_harga" class="form-control" min="0" required>
                         </div>
 
                         <div class="col-md-4 mb-2">
-                            <label>Total Harga</label>
-                            <input type="number" id="edit_total_harga" class="form-control" readonly>
+                            <label>Total Nilai Aset</label>
+                            <input type="number" id="edit_total_harga" class="form-control bg-light" readonly>
                         </div>
 
                         <div class="col-md-6 mb-2">
-                            <label>Kondisi</label>
-                            <select name="kondisi" id="edit_kondisi" class="form-control">
+                            <label>Kondisi Barang</label>
+                            <select name="kondisi" id="edit_kondisi" class="form-control" required>
                                 <option value="baik">Baik</option>
                                 <option value="rusak">Rusak</option>
                                 <option value="hilang">Hilang</option>
@@ -115,8 +75,8 @@
                         </div>
 
                         <div class="col-md-6 mb-2">
-                            <label>Status</label>
-                            <select name="status" id="edit_status" class="form-control">
+                            <label>Status Operasional</label>
+                            <select name="status" id="edit_status" class="form-control" required>
                                 <option value="aktif">Aktif</option>
                                 <option value="nonaktif">Nonaktif</option>
                             </select>
@@ -127,7 +87,7 @@
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-warning">
+                    <button type="submit" class="btn btn-warning font-weight-bold text-dark">
                         <i class="fas fa-save"></i> Simpan Perubahan
                     </button>
                 </div>
@@ -141,7 +101,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Handle Edit Modal - Populate data
+    // Handle Edit Modal - Populate data terfilter
     document.querySelectorAll('.btn-edit-asset').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = btn.getAttribute('data-id');
@@ -149,10 +109,10 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/assets/${id}`)
                 .then(response => response.json())
                 .then(data => {
-                    // Set form action
+                    // Set form action route update
                     document.getElementById('editAssetForm').action = `/assets/${id}`;
                     
-                    // Populate fields
+                    // Isi data field yang tersisa
                     document.getElementById('edit_kode_aset').value = data.kode_aset || '-';
                     document.getElementById('edit_merk').value = data.merk || '-';
                     document.getElementById('edit_tahun').value = data.tahun || '';
@@ -163,70 +123,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('edit_kondisi').value = data.kondisi || 'baik';
                     document.getElementById('edit_status').value = data.status || 'aktif';
                     
-                    // Set select values (kamu perlu sesuaikan dengan data yang dikembalikan)
-                    document.getElementById('edit_id_barang').value = data.id_barang || '';
-                    document.getElementById('edit_id_kategori').value = data.id_kategori || '';
-                    document.getElementById('edit_id_jenis').value = data.id_jenis || '';
-                    document.getElementById('edit_id_lokasi').value = data.id_lokasi || '';
-                    document.getElementById('edit_id_amil').value = data.id_amil || '';
-                    document.getElementById('edit_id_sumber_dana').value = data.id_sumber_dana || '';
-                    
-                    // Trigger modal
+                    // Trigger modal Bootstrap
                     $('#editAssetModal').modal('show');
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Gagal memuat data aset');
+                    alert('Gagal mengambil data modifikasi aset.');
                 });
         });
     });
 
-    // Hitung total harga saat volume atau harga berubah
-    document.getElementById('edit_volume').addEventListener('input', function() {
-        hitungTotalEdit();
-    });
-    document.getElementById('edit_harga').addEventListener('input', function() {
-        hitungTotalEdit();
-    });
+    // Otomatisasi perhitungan total harga finansial aset
+    document.getElementById('edit_volume').addEventListener('input', hitungTotalEdit);
+    document.getElementById('edit_harga').addEventListener('input', hitungTotalEdit);
 
     function hitungTotalEdit() {
-        const v = document.getElementById('edit_volume').value || 0;
-        const h = document.getElementById('edit_harga').value || 0;
+        const v = parseFloat(document.getElementById('edit_volume').value) || 0;
+        const h = parseFloat(document.getElementById('edit_harga').value) || 0;
         document.getElementById('edit_total_harga').value = v * h;
     }
-
-    // Initialize select2 saat modal dibuka
-    $('#editAssetModal').on('shown.bs.modal', function() {
-        if (!$('.select-barang-edit').hasClass('select2-hidden-accessible')) {
-            $('.select-barang-edit').select2({
-                theme: 'bootstrap4',
-                placeholder: 'Cari barang...',
-                width: '100%',
-                dropdownParent: $('#editAssetModal')
-            });
-
-            $('.select-jenis-edit').select2({
-                theme: 'bootstrap4',
-                placeholder: 'Cari jenis...',
-                width: '100%',
-                dropdownParent: $('#editAssetModal')
-            });
-
-            $('.select-lokasi-edit').select2({
-                theme: 'bootstrap4',
-                placeholder: 'Cari lokasi...',
-                width: '100%',
-                dropdownParent: $('#editAssetModal')
-            });
-
-            $('.select-amil-edit').select2({
-                theme: 'bootstrap4',
-                placeholder: 'Cari penanggung jawab...',
-                width: '100%',
-                dropdownParent: $('#editAssetModal')
-            });
-        }
-    });
-
 });
+
 </script>

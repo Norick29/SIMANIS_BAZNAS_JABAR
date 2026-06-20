@@ -4,7 +4,9 @@
 
 <div class="container-fluid">
 
-    <h1 class="h3 mb-2 text-gray-800">Manajemen Amil</h1> 
+    <h1 class="h3 mb-2 text-gray-800">
+        <i class="fas fa-user-shield mr-2"></i> Manajemen Amil
+    </h1>
 
     @if ($errors->any())
     <div class="alert alert-danger alert-dismissible fade show">
@@ -57,7 +59,8 @@
                 </a>
             </div>
 
-            <h6 class="m-0 font-weight-bold text-success">Daftar Amil</h6>
+            <h6 class="m-0 font-weight-bold text-success">
+                <i class="fas fa-list"></i> Daftar Amil</h6>
         </div>
 
         <div class="card-body">

@@ -4,7 +4,9 @@
 <div class="container-fluid">
 
     {{-- HEADER --}}
-    <h1 class="h3 mb-2 text-gray-800">Data Lokasi</h1>
+    <h1 class="h3 mb-2 text-gray-800">
+        <i class="fas fa-map-marker-alt mr-2"></i> Data Lokasi Ruangan
+    </h1>
 
     {{-- ALERT --}}
     @if (session('success'))
@@ -33,7 +35,8 @@
                     <i class="fas fa-file-excel"></i> Import Excel
                 </a>
             </div>
-            <h6 class="m-0 font-weight-bold text-success">Daftar Lokasi</h6>
+            <h6 class="m-0 font-weight-bold text-success">
+                <i class="fas fa-list"></i> Daftar Lokasi</h6>
         </div>
 
         {{-- CARD BODY --}}

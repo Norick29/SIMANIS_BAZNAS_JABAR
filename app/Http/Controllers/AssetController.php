@@ -10,6 +10,7 @@ use App\Models\Jenis;
 use App\Models\Lokasi;
 use App\Models\Amil;
 use App\Models\Sumber;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Endroid\QrCode\Builder\Builder;
@@ -18,21 +19,90 @@ use App\Models\PindahAset;
 use App\Models\Approval;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Notifications\AssetMutationNotification;
+
 
 class AssetController extends Controller
 {
     
 
-public function index()
+public function index(Request $request)
 {
-    $assets   = Asset::latest()->paginate(10);
-    $barangs  = Barang::orderBy('nama_barang')->get();
+    $query = Asset::with([
+        'barang',
+        'kategori',
+        'jenis',
+        'lokasi',
+        'amil',
+        'sumberDana'
+    ]);
+
+    // =========================================================================
+    // 🔍 FITUR SEARCH GLOBAL (TAMBAHAN BARU - AMAN DARI BENTROKAN FILTER)
+    // =========================================================================
+    if ($request->filled('q')) {
+        $search = $request->q;
+        $query->where(function ($subQuery) use ($search) {
+            // Search di tabel asset sendiri
+            $subQuery->where('kode_aset', 'like', '%' . $search . '%')
+                     ->orWhere('merk', 'like', '%' . $search . '%')
+                     ->orWhere('kondisi', 'like', '%' . $search . '%')
+                     ->orWhere('status', 'like', '%' . $search . '%');
+
+            // Search merujuk ke relasi nama_barang di tabel barangs
+            $subQuery->orWhereHas('barang', function ($q) use ($search) {
+                $q->where('nama_barang', 'like', '%' . $search . '%');
+            });
+
+            // Search merujuk ke relasi nama_kategori di tabel kategoris
+            $subQuery->orWhereHas('kategori', function ($q) use ($search) {
+                $q->where('nama_kategori', 'like', '%' . $search . '%');
+            });
+
+            // Search merujuk ke relasi nama_lokasi di tabel lokasis
+            $subQuery->orWhereHas('lokasi', function ($q) use ($search) {
+                $q->where('nama_lokasi', 'like', '%' . $search . '%');
+            });
+
+            // Search merujuk ke relasi nama amil di tabel amils
+            $subQuery->orWhereHas('amil', function ($q) use ($search) {
+                $q->where('nama', 'like', '%' . $search . '%');
+            });
+        });
+    }
+
+    // FILTER LOKASI
+    if ($request->filled('id_lokasi')) {
+        $query->where('id_lokasi', $request->id_lokasi);
+    }
+
+    // FILTER KATEGORI
+    if ($request->filled('id_kategori')) {
+        $query->where('id_kategori', $request->id_kategori);
+    }
+
+    // FILTER TAHUN
+    if ($request->filled('tahun')) {
+        $query->where('tahun', $request->tahun);
+    }
+
+    // FILTER KONDISI
+    if ($request->filled('kondisi')) {
+        $query->where('kondisi', $request->kondisi);
+    }
+
+    $assets = $query
+        ->latest()
+        ->paginate(10)
+        ->appends($request->query());
+
+    $barangs   = Barang::orderBy('nama_barang')->get();
     $kategoris = Kategori::orderBy('nama_kategori')->get();
-    $jenis    = Jenis::orderBy('nama_jenis')->get();
-    $lokasis  = Lokasi::orderBy('nama_lokasi')->get();
-    $amils    = Amil::orderBy('nama')->get();
-    $sumbers  = Sumber::orderBy('kode_sumber_dana')->get();
+    $jenis     = Jenis::orderBy('nama_jenis')->get();
+    $lokasis   = Lokasi::orderBy('nama_lokasi')->get();
+    $amils     = Amil::orderBy('nama')->get();
+    $sumbers   = Sumber::orderBy('kode_sumber_dana')->get();
 
     return view('superadmin.aset.data_aset.index', compact(
         'assets',
@@ -43,7 +113,7 @@ public function index()
         'amils',
         'sumbers'
     ));
-} 
+}
 
 
 public function store(Request $request)
@@ -197,65 +267,65 @@ public function store(Request $request)
 }
 
 public function show($id)
+
 {
+
     $aset = Asset::with([
+
         'barang',
+
         'kategori',
+
         'jenis',
+
         'lokasi',
+
         'amil',
+
         'sumberDana'
+
     ])->findOrFail($id);
 
+
+
     return response()->json([
+
         'id_aset'      => $aset->id_aset,
+
         'kode_aset'    => $aset->kode_aset,
+
         'qr_code'      => $aset->qr_code ? asset($aset->qr_code) : null,
+
         'barang'       => $aset->barang->nama_barang ?? '-',
+
         'merk'         => $aset->merk ?? '-',
+
         'tahun'        => $aset->tahun ?? '-',
+
         'volume'       => $aset->volume ?? '-',
+
         'satuan'       => $aset->satuan ?? '-',
+
         'kondisi'      => $aset->kondisi ?? '-',
+
         'status'       => $aset->status,
+
         'harga'        => $aset->harga ?? '-',
+
         'total_harga'  => $aset->total_harga ?? '-',
+
         'kategori'     => $aset->kategori->nama_kategori ?? '-',
+
         'jenis'        => $aset->jenis->nama_jenis ?? '-',
+
         'lokasi'       => $aset->lokasi->nama_lokasi ?? '-',
+
         'amil'         => $aset->amil->nama ?? '-',
+
         'sumber_dana'  => $aset->sumberDana->nama_sumber_dana ?? '-',
-    ]);
-}
 
-public function showFormPindah($id_aset)
-{
-    $aset = Asset::with([
-        'barang',
-        'lokasi',
-        'amil',
-    ])->findOrFail($id_aset);
-
-    return view('superadmin.aset.data_aset.form-pindah', compact('aset'));
-}
-
-public function verifyLoginPindah(Request $request)
-{
-    $request->validate([
-        'password' => 'required',
     ]);
 
-    // if (!Auth::attempt(['email' => Auth::user()->email, 'password' => $request->password])) {
-    //     return back()->with('error', 'Password salah, verifikasi gagal.');
-    // }
-    if (!Hash::check($request->password, Auth::user()->password)) {
-        return back()->with('error', 'Password salah, verifikasi gagal.');
-    }
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Verifikasi berhasil'
-    ]);
 }
 
 public function getReferensiData()
@@ -338,6 +408,29 @@ public function pindahAset(Request $request)
 
         DB::commit();
 
+        /**
+         * =========================================================================
+         * 🔑 TRIGGER NOTIFIKASI DI SINI (SETELAH DB COMMIT)
+         * =========================================================================
+         */
+        // 1. Ambil semua user dengan role 'kadept'
+        $kadeptUsers = User::where('role', 'kadept')->get();
+
+        // 2. Susun detail informasi cetakan notifikasinya
+        $details = [
+            'id_pindah' => $pindah->id_pindah, // Ambil ID perpindahan yang baru dibuat
+            'title'     => 'Pengajuan Mutasi Aset Baru',
+            'message'   => "Aset dengan kode {$aset->kode_aset} memerlukan persetujuan Anda pada Stage 1.",
+            'icon'      => 'fas fa-file-alt',
+            'bg_color'  => 'bg-success', // Nuansa hijau BAZNAS
+            'url'       => url('/approvals') // Sesuaikan dengan route halaman approval kadept kamu
+        ];
+
+        // 3. Blast notifikasi ke semua Kadept (Otomatis masuk database navbar & kirim email)
+        foreach ($kadeptUsers as $kadept) {
+            $kadept->notify(new AssetMutationNotification($details));
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Permintaan pindah aset berhasil dikirim. Menunggu approval dari Kepala Departemen.'
@@ -354,6 +447,21 @@ public function pindahAset(Request $request)
     }
 }
 
+public function scanLoginBridge(Request $request)
+{
+    // 1. Ambil URL halaman scan asli beserta signature-nya (UTUH TANPA DIUBAH)
+    $targetUrl = $request->query('target');
+
+    // 2. Masukkan URL utuh tersebut ke intended target pasca-login
+    session(['url.intended' => $targetUrl]);
+
+    // 3. TITIPKAN FLASH SESSION sebagai penanda bahwa setelah login, modal harus terbuka
+    session()->flash('trigger_pindah_scan', true);
+
+    // 4. Lempar ke halaman login
+    return redirect()->route('login');
+}
+
 public function scanQr($kode_aset)
 {
     $aset = Asset::where('kode_aset', $kode_aset)
@@ -367,48 +475,55 @@ public function scanQr($kode_aset)
         ])
         ->firstOrFail();
 
-    // Return halaman dengan modal detail yang langsung terbuka
-    return view('superadmin.aset.data_aset.scan-result', compact('aset'));
+    // 1. AMBIL DATA MASTER AMIL DAN LOKASI UNTUK DROPDOWN MODAL PINDAH
+    $amils = Amil::orderBy('nama', 'asc')->get();
+    $lokasis = Lokasi::orderBy('nama_lokasi', 'asc')->get();
+
+    // 2. KIRIMKAN SEMUANYA (aset, amils, lokasis) KE VIEW SCAN RESULT
+    return view('superadmin.aset.data_aset.scan-result', compact('aset', 'amils', 'lokasis'));
 }
 
 public function update(Request $request, $id)
 {
     $request->validate([
-        'id_barang'        => 'required|exists:barangs,id_barang',
-        'id_kategori'      => 'required|exists:kategoris,id_kategori',
-        'id_jenis'         => 'required|exists:jenis,id_jenis',
-        'id_lokasi'        => 'required|exists:lokasis,id_lokasi',
-        'id_amil'          => 'required|exists:amils,id_amil',
-        'id_sumber_dana'   => 'required|exists:sumbers,id_sumber_dana',
-        'merk'             => 'nullable|string|max:100',
-        'tahun'            => 'required|digits:4',
-        'volume'           => 'required|integer|min:1',
-        'satuan'           => 'nullable|string|max:20',
-        'harga'            => 'required|numeric|min:0',
-        'kondisi'          => 'required|in:baik,rusak,hilang',
-        'status'           => 'required|in:aktif,nonaktif',
+        'merk'    => 'nullable|string|max:100',
+        'volume'  => 'required|integer|min:1',
+        'satuan'  => 'nullable|string|max:20',
+        'harga'   => 'required|numeric|min:0',
+        'kondisi' => 'required|in:baik,rusak,hilang',
+        'status'  => 'required|in:aktif,nonaktif',
     ]);
 
     $aset = Asset::findOrFail($id);
+    $kondisiSebelumnya = $aset->kondisi;
 
     $totalHarga = $request->volume * $request->harga;
 
+    // Update data informasi umum aset
     $aset->update([
-        'id_barang'        => $request->id_barang,
-        'id_kategori'      => $request->id_kategori,
-        'id_jenis'         => $request->id_jenis,
-        'id_lokasi'        => $request->id_lokasi,
-        'id_amil'          => $request->id_amil,
-        'id_sumber_dana'   => $request->id_sumber_dana,
-        'merk'             => $request->merk,
-        'tahun'            => $request->tahun,
-        'volume'           => $request->volume,
-        'satuan'           => $request->satuan,
-        'harga'            => $request->harga,
-        'total_harga'      => $totalHarga,
-        'kondisi'          => $request->kondisi,
-        'status'           => $request->status,
+        'merk'        => $request->merk,
+        'volume'      => $request->volume,
+        'satuan'      => $request->satuan,
+        'harga'       => $request->harga,
+        'total_harga' => $totalHarga,
+        'kondisi'     => $request->kondisi,
+        // Jika diubah ke rusak, status operasional OTOMATIS dikunci ke 'nonaktif'
+        'status'      => $request->kondisi == 'rusak' ? 'nonaktif' : $request->status,
     ]);
+
+    // TRIGGER OTOMATIS: Jika kondisi berubah dari Baik -> Rusak
+    if ($kondisiSebelumnya != 'rusak' && $request->kondisi == 'rusak') {
+        \App\Models\Maintenance::create([
+            'id_aset'         => $aset->id_aset,
+            'jenis'           => 'perbaikan',
+            'status'          => 'proses', // Langsung berstatus proses pengerjaan
+            'biaya'           => 0,
+            'tanggal_mulai'   => now(), // Tanggal mulai adalah hari ini
+            'tanggal_selesai' => null,
+            'durasi'          => 'Menunggu Pemeriksaan', // Akan di-update berdasarkan tingkat kerusakan
+            'deskripsi'       => 'Aset dilaporkan rusak dari menu data aset. Menunggu pemeriksaan tingkat kerusakan oleh teknisi.',
+        ]);
+    }
 
     return redirect()
         ->route('assets.index')
@@ -423,5 +538,417 @@ public function destroy($id)
     return redirect()
         ->back()
         ->with('success', 'Data aset berhasil dihapus.');
+}
+
+public function getJsonDetail($id)
+{
+    // Mengambil data terupdate beserta relasi lokasi dan amil barunya
+    $aset = Asset::with(['barang', 'lokasi', 'amil', 'kategori', 'jenis', 'sumber_dana'])->findOrFail($id);
+    return response()->json($aset);
+}
+
+public function import(Request $request)
+    {
+        // 1. Validasi Awal: Pastikan Master Data Utama Tidak Kosong
+        if (Barang::count() === 0 || Kategori::count() === 0 || Lokasi::count() === 0 || Amil::count() === 0 || Sumber::count() === 0) {
+            return back()->with('error', 'Import gagal. Pastikan seluruh data master (Barang, Kategori, Jenis, Lokasi, Amil, Sumber Dana) sudah di-input terlebih dahulu.');
+        }
+
+        // 2. Validasi File Upload
+        $request->validate([
+            'file' => 'required|mimes:xls,xlsx'
+        ]);
+
+        // Load file excel ke dalam array
+        $rows = IOFactory::load($request->file('file')->getPathname())->getActiveSheet()->toArray();
+
+        DB::beginTransaction();
+        
+        $skipped = [];
+        $inserted = 0;
+        
+        // === TRACKER INTERNAL ANTI-DUPLICATE DALAM MEMORI TRANSAKSI ===
+        $generatedCodes = []; 
+
+        // Ambil 1 data Amil default sebagai penanggung jawab awal jika di Excel tidak tercatat
+        $defaultAmil = Amil::whereHas('jabatan', function($query) {
+        // 1. Kunci jabatannya: Harus ada kata 'kepala' atau 'ketua'
+        $query->where('nama_jabatan', 'LIKE', '%kepala%')
+            ->orWhere('nama_jabatan', 'LIKE', '%ketua%');
+        })
+        ->whereHas('divisi', function($query) {
+            // 2. Kunci divisinya: Harus berasal dari Divisi Sauh
+            $query->where('nama_divisi', 'LIKE', '%sauh%');
+        })
+        // 3. Kunci departemennya: Langsung tembak kolom di tabel amils sendiri!
+        ->where('nama_dept', 'LIKE', '%general affair%') 
+        ->first();
+
+        // JARING PENGAMAN AKHIR (FALLBACK LOGIC)
+        // Sekarang fallback ini dijamin aman dan hanya jalan jika data kamu benar-benar belum di-input admin
+        if (!$defaultAmil) {
+            $defaultAmil = Amil::where('nama', 'LIKE', '%inal%')
+                                ->first() ?? Amil::first();
+        }
+
+        try {
+            foreach ($rows as $index => $row) {
+                // Lewati baris pertama (Header warna kuning pada Excel BAZNAS)
+                if ($index === 0) continue;
+
+                // Bersihkan spasi liar di setiap kolom
+                $cleanRow = array_map(function($val) {
+                    return $val !== null ? trim($val) : '';
+                }, $row);
+
+                // Mapping Kolom berdasarkan file Excel Riil BAZNAS (Indeks Array Mulai dari 0)
+                // A=0 (t), B=1 (No Register), C=2 (Barang), D=3 (Merek), E=4 (Warna), F=5 (Ruangan), G=6 (Kategori), H=7 (Jenis), I=8 (Sumber Dana), J=9 (Tahun Beli), K=10 (No Urut Regist), L=11 (Status/Kondisi), M=12 (Keterangan)
+                $txtBarang   = $cleanRow[2]  ?? '';
+                $merk        = $cleanRow[3]  ?? '';
+                $txtWarna    = $cleanRow[4]  ?? '';
+                $txtLokasi   = $cleanRow[5]  ?? '';
+                $txtKategori = $cleanRow[6]  ?? '';
+                $txtJenis    = $cleanRow[7]  ?? '';
+                $txtSumber   = $cleanRow[8]  ?? '';
+                $tahun       = $cleanRow[9]  ?? date('Y');
+                
+                // === AMBIL DATA NO URUT ASLI EXCEL DARI KOLOM K (INDEX 10) ===
+                $noUrutExcel = $cleanRow[10] ?? '';
+                
+                $statusExcel = $cleanRow[11] ?? 'Baik'; 
+                $keterangan  = $cleanRow[12] ?? '';
+
+                // Jika kolom nama barang kosong, abaikan baris tersebut
+                if (!$txtBarang) {
+                    continue;
+                }
+
+                // 3. PENCARIAN ID DATA MASTER BERDASARKAN TEKS EXCEL
+                $barang   = Barang::whereRaw('LOWER(nama_barang) = ?', [strtolower($txtBarang)])->first();
+                $kategori = Kategori::whereRaw('LOWER(nama_kategori) = ?', [strtolower($txtKategori)])->first();
+                $jenis    = Jenis::whereRaw('LOWER(nama_jenis) = ?', [strtolower($txtJenis)])->first();
+                $lokasi   = Lokasi::whereRaw('LOWER(nama_lokasi) = ?', [strtolower($txtLokasi)])->first();
+                $sumber   = Sumber::whereRaw('LOWER(nama_sumber_dana) = ?', [strtolower($txtSumber)])->first();
+
+                // Jika salah satu referensi master tidak ditemukan, skip dan catat barisnya
+                if (!$barang || !$kategori || !$jenis || !$lokasi || !$sumber) {
+                    $skipped[] = "Baris " . ($index + 1) . " ({$txtBarang}): Gagal karena data Master (Kategori/Jenis/Lokasi/Sumber Dana) belum terdaftar di aplikasi.";
+                    continue;
+                }
+
+                // 4. STANDARISASI STATUS EXCEL MENJADI KONDISI DATABASE (baik, rusak, hilang)
+                $kondisiDB = 'baik';
+                if (Str::contains(strtolower($statusExcel), ['rusak', 'jelek'])) {
+                    $kondisiDB = 'rusak';
+                } elseif (Str::contains(strtolower($statusExcel), 'hilang')) {
+                    $kondisiDB = 'hilang';
+                }
+
+                // 5. GABUNGKAN DATA SPESIFIKASI (Warna & Keterangan) KE KOLOM MERK
+                $detailMerk = $merk ?: '-';
+                if ($txtWarna) {
+                    $detailMerk .= " (Warna: " . $txtWarna . ")";
+                }
+                if ($keterangan) {
+                    $detailMerk .= " [Ket: " . $keterangan . "]";
+                }
+
+                // 6. SINKRONISASI KODE ASET BERFORMAT TITIK (MENIRU LOGIKA STORE MANUAL)
+                $kodeLokasi   = str_pad($lokasi->kode_lokasi, 2, '0', STR_PAD_LEFT);
+                $kodeKategori = str_pad($kategori->kode_kategori, 2, '0', STR_PAD_LEFT);
+                $kodeJenis    = str_pad($jenis->kode_jenis, 2, '0', STR_PAD_LEFT);
+                $kodeBarang   = str_pad($barang->kode_barang, 2, '0', STR_PAD_LEFT);
+                $kodeSumber   = $sumber->kode_sumber_dana;
+                $tahunDuaDig  = substr($tahun, -2);
+
+                // =========================================================================
+                // PERBAIKAN LOGIKA NOMOR URUT: PRIORITAS NO URUT EXCEL -> FALLBACK AUTO INCREMENT
+                // =========================================================================
+                if ($noUrutExcel !== '' && is_numeric($noUrutExcel)) {
+                    // Jika kolom K di Excel tercatat angkanya, pakai angka tersebut secara mutlak
+                    $nextUrut = (int) $noUrutExcel;
+                } else {
+                    // Jika kolom K kosong (karena stiker luntur), baru sistem mencari nomor urut terakhir di database real
+                    $lastAset = Asset::where('id_lokasi', $lokasi->id_lokasi)
+                        ->where('id_kategori', $kategori->id_kategori)
+                        ->orderBy('id_aset', 'desc')
+                        ->first();
+
+                    $nextUrut = 1;
+                    if ($lastAset) {
+                        $nextUrut = ((int) substr($lastAset->kode_aset, -3)) + 1;
+                    }
+                }
+
+                // LOOPING VALIDASI BERDASARKAN DATABASE + MEMORI ARRAY INTERNAL TRACKER
+                do {
+                    $urut = str_pad($nextUrut, 3, '0', STR_PAD_LEFT);
+                    $kodeAsetResmi = "{$kodeLokasi}.{$kodeKategori}.{$kodeJenis}.{$kodeBarang}.{$kodeSumber}.{$tahunDuaDig}.{$urut}";
+                    
+                    // Cek apakah kode sudah terpakai di database nyata OR sudah ada di list antrean memori array
+                    $isDuplicateInDb    = Asset::where('kode_aset', $kodeAsetResmi)->exists();
+                    $isDuplicateInQueue = in_array($kodeAsetResmi, $generatedCodes);
+                    
+                    if ($isDuplicateInDb || $isDuplicateInQueue) {
+                        $nextUrut++; // Jika duplikat/tabrakan, otomatis naikkan nomor urutnya ke urutan berikutnya
+                        $isDuplicate = true;
+                    } else {
+                        $isDuplicate = false;
+                    }
+                } while ($isDuplicate);
+
+                // Masukkan kode resmi yang sudah divalidasi aman ke dalam list memori array tracker
+                $generatedCodes[] = $kodeAsetResmi;
+                // =========================================================================
+
+                // 7. OTOMATISASI GENERATE FILE QR CODE PER BARIS DATA IMPORT
+                $qrDirectory = public_path('qr-assets');
+                if (!file_exists($qrDirectory)) {
+                    mkdir($qrDirectory, 0755, true);
+                }
+
+                $qrFileName = 'qr_' . Str::uuid() . '.png';
+                $qrPath     = 'qr-assets/' . $qrFileName;
+                $signedUrl  = URL::signedRoute('assets.scan', [
+                    'kode_aset' => $kodeAsetResmi
+                ]);
+
+                // Eksekusi pembuatan file PNG QR Code
+                $resultQr = Builder::create()
+                    ->writer(new PngWriter())
+                    ->data($signedUrl)
+                    ->size(300)
+                    ->margin(5)
+                    ->build();
+
+                $resultQr->saveToFile(public_path($qrPath));
+
+                // 8. INSERT DATA KE DATABASE DENGAN NILAI DEFAULT MANIPULASI
+                Asset::create([
+                    'kode_aset'       => $kodeAsetResmi, // Kode resmi terstruktur
+                    'id_barang'       => $barang->id_barang,
+                    'id_kategori'     => $kategori->id_kategori,
+                    'id_jenis'        => $jenis->id_jenis,
+                    'id_lokasi'       => $lokasi->id_lokasi,
+                    'id_amil'         => $defaultAmil->id_amil, // Otomatis diarahkan ke akun penanggung jawab default
+                    'id_sumber_dana'  => $sumber->id_sumber_dana,
+                    'merk'            => $detailMerk, // Menyimpan kombinasi Merk + Warna + Keterangan Excel
+                    'tahun'           => $tahun,
+                    'volume'          => 1,           // Default value: 1 per baris record
+                    'satuan'          => 'Unit',      // Default value
+                    'harga'           => 0,           // Default value: Diisi 0 karena histori harga kosong di excel
+                    'total_harga'     => 0,           // Default value
+                    'kondisi'         => $kondisiDB,  // Hasil konversi status dari Excel
+                    'status'          => 'aktif',     // Default value: Langsung siap beroperasi
+                    'qr_code'         => $qrPath,     // Menyimpan path file QR Code yang baru dibuat
+                ]);
+
+                $inserted++;
+            }
+
+            DB::commit();
+
+            // Jika ada baris data yang terlewat (karena nama master belum terdaftar)
+            if ($skipped) {
+                return back()->with([
+                    'warning'    => "Proses import selesai. Berhasil menyimpan {$inserted} data aset.",
+                    'duplicates' => $skipped
+                ]);
+            }
+
+            return back()->with('success', "Luar biasa! Sukses meng-import {$inserted} data aset langsung menggunakan format asli BAZNAS.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Proses eksekusi import hancur total: ' . $e->getMessage());
+        }
+    }
+
+    public function overtakeAset(Request $request)
+{
+    $request->validate([
+        'id_amil_lama' => 'required|exists:amils,id_amil',
+        'id_amil_baru' => 'required|exists:amils,id_amil',
+    ]);
+
+    DB::beginTransaction();
+    try {
+        // Ambil alih semua aset dalam satu baris perintah
+        $jumlahAset = Asset::where('id_amil', $request->id_amil_lama)
+                           ->update(['id_amil' => $request->id_amil_baru]);
+
+        DB::commit();
+        return back()->with('success', "Sukses mutasi! Sebanyak {$jumlahAset} aset telah berhasil dialihkan tanggung jawabnya.");
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Gagal memindahkan aset: ' . $e->getMessage());
+    }
+}
+
+public function reportIndex()
+{
+    // Mengambil data master untuk pilihan dropdown di form filter
+    $lokasis   = Lokasi::orderBy('nama_lokasi', 'asc')->get();
+    $kategoris = Kategori::orderBy('nama_kategori', 'asc')->get();
+    $sumbers   = Sumber::orderBy('nama_sumber_dana', 'asc')->get();
+
+    // Mengambil list tahun unik yang ada di database untuk filter tahun beli
+    $tahuns = Asset::select('tahun')
+        ->distinct()
+        ->orderBy('tahun', 'desc')
+        ->pluck('tahun');
+
+    return view('superadmin.reports.index', compact('lokasis', 'kategoris', 'sumbers', 'tahuns'));
+}
+
+public function reportAssetPrint(Request $request)
+{
+    // Build Query dengan eager loading seluruh relasi sesuai dengan yang ada di Model Asset
+    $query = Asset::with(['barang', 'kategori', 'jenis', 'lokasi', 'amil', 'sumberDana']);
+
+    // --- LOGIKA FILTERING ---
+    if ($request->filled('id_lokasi')) {
+        $query->where('id_lokasi', $request->id_lokasi);
+    }
+    if ($request->filled('id_kategori')) {
+        $query->where('id_kategori', $request->id_kategori);
+    }
+    if ($request->filled('id_sumber_dana')) {
+        $query->where('id_sumber_dana', $request->id_sumber_dana);
+    }
+    if ($request->filled('tahun')) {
+        $query->where('tahun', $request->tahun);
+    }
+    if ($request->filled('kondisi')) {
+        $query->where('kondisi', $request->kondisi);
+    }
+
+    // Ambil data hasil filter
+    $assets = $query->orderBy('kode_aset', 'asc')->get();
+
+    // Hitung ringkasan kalkulasi finansial di bawah tabel laporan
+    $totalVolume = $assets->sum('volume');
+    $totalHarga  = $assets->sum('total_harga');
+
+    // Menyiapkan teks info filter yang sedang aktif untuk judul laporan
+    $filterInfo = [];
+    if ($request->filled('id_lokasi')) {
+        $filterInfo[] = 'Lokasi: ' . Lokasi::find($request->id_lokasi)->nama_lokasi;
+    }
+    if ($request->filled('id_kategori')) {
+        $filterInfo[] = 'Kategori: ' . Kategori::find($request->id_kategori)->nama_kategori;
+    }
+    if ($request->filled('tahun')) {
+        $filterInfo[] = 'Tahun Beli: ' . $request->tahun;
+    }
+    
+    $stringFilter = count($filterInfo) > 0 ? implode(' | ', $filterInfo) : 'Semua Data';
+
+    // --- LOGIKA SYSTEM VERIFICATION STAMP (Mencegah Penyalahgunaan TTD) ---
+    $printedBy = $request->user()->name;
+    $role      = $request->user()->role;
+    $timestamp = now()->format('Y-m-d H:i:s');
+    
+    // String enkripsi yang dimasukkan ke dalam QR Code Laporan Statis
+    $qrCodeSystem = "SIMASET BAZNAS JABAR | Jenis: Laporan Inventaris Aset | Generator: {$printedBy} ({$role}) | Waktu Cetak: {$timestamp} | Status Dokumen: Sah Terintegrasi Sistem";
+
+    // Mencari nama Kepala Divisi SAUH yang aktif di database untuk TTD otomatis
+    $kepalaDivisi = User::where('role', 'kadiv')->first()->name ?? '........................................';
+    // Mencari nama Kepala Departemen GA yang aktif di database untuk TTD otomatis
+    $kepalaDept   = User::where('role', 'kadept')->first()->name ?? '........................................';
+
+    return view('superadmin.reports.print_asset', compact(
+        'assets', 'totalVolume', 'totalHarga', 'stringFilter', 
+        'qrCodeSystem', 'printedBy', 'timestamp', 'kepalaDivisi', 'kepalaDept'
+    ));
+}
+
+public function reportMutasiPrint(Request $request)
+{
+    // Eager loading relasi berdasarkan model PindahAset kamu
+    $query = PindahAset::with(['asset.barang', 'amilSebelum', 'amilSesudah', 'lokasiBaru', 'requestedBy']);
+
+    // --- LOGIKA FILTERING ---
+    if ($request->filled('tanggal_awal') && $request->filled('tanggal_akhir')) {
+        $query->whereBetween('created_at', [$request->tanggal_awal . ' 00:00:00', $request->tanggal_akhir . ' 23:59:59']);
+    }
+
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    // Ambil data hasil filter rekap
+    $mutasis = $query->orderBy('created_at', 'desc')->get();
+
+    // Menyusun string informasi parameter filter untuk judul dokumen resmi
+    $filterInfo = [];
+    if ($request->filled('tanggal_awal') && $request->filled('tanggal_akhir')) {
+        $filterInfo[] = 'Periode: ' . date('d/m/Y', strtotime($request->tanggal_awal)) . ' s.d ' . date('d/m/Y', strtotime($request->tanggal_akhir));
+    }
+    if ($request->filled('status')) {
+        $filterInfo[] = 'Status: ' . strtoupper($request->status);
+    }
+    
+    $stringFilter = count($filterInfo) > 0 ? implode(' | ', $filterInfo) : 'Semua Riwayat Pergerakan Aset';
+
+    // Ambil data nama pimpinan untuk TTD otomatis di laporan mutasi
+    $kepalaDivisi = User::where('role', 'kadiv')->first()->name ?? '........................................';
+    $kepalaDept   = User::where('role', 'kadept')->first()->name ?? '........................................';
+
+    return view('superadmin.reports.print_mutasi', compact('mutasis', 'stringFilter', 'kepalaDivisi', 'kepalaDept'));
+}
+
+public function bulkPrintQr(Request $request)
+{
+    // Build query dasar dengan eager loading relasi barang
+    $query = Asset::with('barang');
+
+    // --- SINKRONISASI FILTER (MENGADOPSI FILTER DARI HALAMAN INDEKS) ---
+    if ($request->filled('id_lokasi')) {
+        $query->where('id_lokasi', $request->id_lokasi);
+    }
+    if ($request->filled('id_kategori')) {
+        $query->where('id_kategori', $request->id_kategori);
+    }
+    if ($request->filled('tahun')) {
+        $query->where('tahun', $request->tahun);
+    }
+    if ($request->filled('kondisi')) {
+        $query->where('kondisi', $request->kondisi);
+    }
+
+    // Ambil semua data hasil filter tanpa pagination (karena mau dicetak stiker semua)
+    $assets = $query->orderBy('kode_aset', 'asc')->get();
+
+    // Jaring pengaman jika data kosong
+    if ($assets->isEmpty()) {
+        return redirect()->back()->with('warning', 'Tidak ada data aset yang tersedia untuk dicetak.');
+    }
+
+    return view('superadmin.reports.bulk_qr', compact('assets'));
+}
+
+public function selectedPrintQr(Request $request)
+{
+    $request->validate([
+        'asset_ids' => 'required|array'
+    ]);
+
+    $assets = Asset::with('barang')
+        ->whereIn('id_aset', $request->asset_ids)
+        ->orderBy('kode_aset')
+        ->get();
+
+    if ($assets->isEmpty()) {
+        return back()->with(
+            'warning',
+            'Tidak ada aset yang dipilih.'
+        );
+    }
+
+    return view(
+        'superadmin.reports.bulk_qr',
+        compact('assets')
+    );
 }
 }

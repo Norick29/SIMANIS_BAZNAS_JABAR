@@ -28,7 +28,7 @@
 
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">
+            <h6 class="m-0 font-weight-bold text-success">
                 <i class="fas fa-list"></i> Daftar Permintaan Approval
             </h6>
         </div>
@@ -84,10 +84,14 @@
                                     </td>
                                     <td>{{ $approval->created_at->format('d M Y H:i') }}</td>
                                     <td>
-                                        <a href="{{ route('approvals.show', $approval->id_approval) }}" 
-                                           class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye"></i> Review
-                                        </a>
+                                        @if(auth()->user()->role !== 'super admin')
+                                            <a href="{{ route('approvals.show', $approval->id_approval) }}" 
+                                            class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> Review
+                                            </a>
+                                        @else
+                                            <span class="badge badge-secondary"><i class="fas fa-lock"></i> Hanya Pantauan</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

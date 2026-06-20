@@ -4,7 +4,9 @@
 <div class="container-fluid">
 
     {{-- HEADER --}}
-    <h1 class="h3 mb-2 text-gray-800">Data Jenis</h1>
+    <h1 class="h3 mb-2 text-gray-800">
+        <i class="fas fa-tags mr-2"></i> Data Jenis Barang
+    </h1>
 
     {{-- VALIDATION ERRORS --}}
     @if ($errors->any())
@@ -60,7 +62,8 @@
                     <i class="fas fa-file-excel"></i> Import Excel
                 </a>
             </div>
-            <h6 class="m-0 font-weight-bold text-success">Daftar Jenis</h6>
+            <h6 class="m-0 font-weight-bold text-success">
+                <i class="fas fa-list"></i> Daftar Jenis</h6>
         </div>
 
         {{-- CARD BODY --}}

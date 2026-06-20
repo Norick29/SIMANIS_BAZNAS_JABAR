@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Scan Aset</title>
+    <title>SIMASET BAZNAS JABAR</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     {{-- SB ADMIN CSS (INI WAJIB) --}}

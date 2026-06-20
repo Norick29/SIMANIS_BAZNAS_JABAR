@@ -9,7 +9,7 @@
     <meta name="description" content="">
     <meta name="author" content="">
 
-    <title>SIMANIS BAZNAS JABAR</title>
+    <title>SIMASET BAZNAS JABAR</title>
 
     <!-- Custom fonts for this template-->
     <link href="{{ asset('/') }}sbadmin2/vendor/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
