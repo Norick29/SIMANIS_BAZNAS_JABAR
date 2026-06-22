@@ -162,10 +162,12 @@
                                     {{ $item->created_at->format('d M Y H:i') }}
                                 </td>
                                 <td class="text-center">
+                                    {{-- Semua Role boleh melihat detail modal --}}
                                     <button class="btn btn-info btn-sm" data-toggle="modal" data-target="#detailModal{{ $item->id_pindah }}">
                                         <i class="fas fa-eye"></i>
                                     </button>
 
+                                    {{-- Akses Dokumen jika sudah disetujui --}}
                                     @if($item->status == 'disetujui')
                                         <a href="{{ route('berita-acara.show', $item->id_pindah) }}" class="btn btn-success btn-sm">
                                             <i class="fas fa-file-alt"></i>
@@ -173,6 +175,13 @@
                                         <a href="{{ route('berita-acara.pdf', $item->id_pindah) }}" class="btn btn-danger btn-sm">
                                             <i class="fas fa-file-pdf"></i>
                                         </a>
+                                    @endif
+
+                                    {{-- OPSI: Jika status masih menunggu, dan user yang login adalah Kadiv/Kadept --}}
+                                    {{-- Anda bisa menampilkan tombol shortcut action di sini jika dibutuhkan --}}
+                                    @if($item->status == 'menunggu' && in_array(auth()->user()->role, ['kadiv', 'kadept']))
+                                        {{-- Contoh: Tombol Cepat Menuju Validasi --}}
+                                        <span class="badge badge-warning d-block mt-1">Perlu Persetujuan</span>
                                     @endif
                                 </td>
                             </tr>

@@ -162,18 +162,24 @@
                                 <td>{{ $m->tanggal_mulai ? $m->tanggal_mulai->format('d M Y') : '-' }}</td>
                                 <td>{{ $m->tanggal_selesai ? $m->tanggal_selesai->format('d M Y') : '-' }}</td>
                                 <td>
-                                    @if($m->status != 'selesai')
-                                        {{-- BUTTON EDIT --}}
-                                        <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editMaintenanceModal{{ $m->id_maintenance }}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-
-                                        {{-- BUTTON DELETE --}}
-                                        <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteMaintenanceModal{{ $m->id_maintenance }}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                    @if(in_array(auth()->user()->role, ['kadiv', 'kadept']))
+                                        {{-- Jika Kadiv atau Kadept, hanya bisa melihat/terkunci (Read-Only) --}}
+                                        <span class="badge badge-info"><i class="fas fa-eye"></i> Monitoring Mode</span>
                                     @else
-                                        <span class="text-muted"><i class="fas fa-lock"></i> Terkunci</span>
+                                        {{-- Jika Staf atau Superadmin --}}
+                                        @if($m->status != 'selesai')
+                                            {{-- BUTTON EDIT --}}
+                                            <button class="btn btn-warning btn-sm" data-toggle="modal" data-target="#editMaintenanceModal{{ $m->id_maintenance }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+
+                                            {{-- BUTTON DELETE --}}
+                                            <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteMaintenanceModal{{ $m->id_maintenance }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        @else
+                                            <span class="text-muted"><i class="fas fa-lock"></i> Terkunci</span>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>

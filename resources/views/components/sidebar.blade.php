@@ -45,10 +45,18 @@
     <!-- ================================================================== -->
     @if (auth()->user()->role == 'kadept' || auth()->user()->role == 'kadiv')
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('monitoring.assets') }}">
-                <i class="fas fa-fw fa-desktop"></i>
+            <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMaster"
+                aria-expanded="true" aria-controls="collapseMaster">
+                <i class="fas fa-fw fa-database"></i>
                 <span>Monitoring</span>
             </a>
+            <div id="collapseMaster" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
+                <div class="bg-white py-2 collapse-inner rounded">
+                    <a class="collapse-item" href="{{ route('assets.index') }}">Data Asset</a>
+                    <a class="collapse-item" href="{{ route('maintenances.index') }}">Maintenance</a>
+                    <a class="collapse-item" href="{{ route('riwayat.pindah') }}">Riwayat Pindah</a>
+                </div>
+            </div>
         </li>
     @endif
 

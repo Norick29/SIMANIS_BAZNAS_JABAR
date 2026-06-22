@@ -225,20 +225,16 @@ public function index(Request $request)
     $query = Maintenance::with(['asset.barang', 'asset.lokasi']);
 
     // --- LOGIKA FILTERING ---
-    // Filter Berdasarkan Rentang Tanggal Mulai Perbaikan
     if ($request->filled('tanggal_awal') && $request->filled('tanggal_akhir')) {
         $query->whereBetween('tanggal_mulai', [$request->tanggal_awal, $request->tanggal_akhir]);
     }
 
-    // Filter Berdasarkan Status (proses / selesai)
     if ($request->filled('status')) {
         $query->where('status', $request->status);
     }
 
     // Ambil data hasil filter
     $maintenances = $query->orderBy('tanggal_mulai', 'desc')->get();
-
-    // Hitung akumulasi total biaya perbaikan dari data yang difilter
     $totalBiaya = $maintenances->sum('biaya');
 
     // Menyusun string informasi parameter filter untuk judul dokumen
@@ -252,20 +248,62 @@ public function index(Request $request)
     
     $stringFilter = count($filterInfo) > 0 ? implode(' | ', $filterInfo) : 'Semua Riwayat Maintenance';
 
-    // --- LOGIKA SYSTEM VERIFICATION STAMP (Gembok Validitas Finansial Perawatan) ---
+    // Metadata Audit Cetak
     $printedBy = $request->user()->name;
     $role      = $request->user()->role;
-    $timestamp = now()->format('Y-m-d H:i:s');
-    
-    // Enkripsi string untuk mengunci data rekap log maintenance dan total biayanya
+    $timestamp = now()->format('d M Y, H:i:s');
+
+    // Ambil data user pimpinan aktif
+    $userKadept = User::where('role', 'kadept')->first();
+    $userKadiv  = User::where('role', 'kadiv')->first();
+
+    $kepalaDept   = $userKadept->name ?? '........................................';
+    $kepalaDivisi = $userKadiv->name ?? '........................................';
+
+    // --- 🔑 DIGITAL SIGNATURE DOUBLE TTD INSTAN (MAINTENANCE) ---
+    $fingerprintKadept = $userKadept ? substr(md5($userKadept->id_user . 'kadept_maint'), 0, 12) : 'KADEPT-EMPTY';
+    $fingerprintKadiv  = $userKadiv ? substr(md5($userKadiv->id_user . 'kadiv_maint'), 0, 12) : 'KADIV-EMPTY';
+
+    $manifestKadept = "BAZNAS JABAR | Jenis: Laporan Maintenance | Oleh Kadept: {$kepalaDept} | Waktu: {$timestamp} | Total Biaya: Rp " . number_format($totalBiaya, 0, ',', '.');
+    $sigKadept = base64_encode(hash_hmac('sha256', $manifestKadept, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
+
+    $manifestKadiv = "BAZNAS JABAR | Jenis: Laporan Maintenance | Oleh Kadiv: {$kepalaDivisi} | Waktu: {$timestamp} | Total Biaya: Rp " . number_format($totalBiaya, 0, ',', '.');
+    $sigKadiv = base64_encode(hash_hmac('sha256', $manifestKadiv, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
+
+    $qrDataKadept = "VERIFIED_KADEPT\nDoc: Laporan Perawatan Aset\nKey Fingerprint: KEY-{$fingerprintKadept}\nSignature: " . substr($sigKadept, 0, 25) . "...";
+    $qrDataKadiv  = "VERIFIED_KADIV\nDoc: Laporan Perawatan Aset\nKey Fingerprint: KEY-{$fingerprintKadiv}\nSignature: " . substr($sigKadiv, 0, 25) . "...";
+
+    // Log Tracker Audit Tengah
     $qrCodeSystem = "SIMASET BAZNAS JABAR | Jenis: Laporan Riwayat Maintenance | Total Biaya: Rp " . number_format($totalBiaya, 0, ',', '.') . " | Generator: {$printedBy} ({$role}) | Waktu Cetak: {$timestamp} | Status Data: Sah Terverifikasi";
 
-    // Mengambil nama pejabat struktural yang aktif secara terpusat dari database
-    $kepalaDivisi = User::where('role', 'kadiv')->first()->name ?? '........................................';
-    $kepalaDept   = User::where('role', 'kadept')->first()->name ?? '........................................';
+    // Kirim Notifikasi Pengawasan Ke Email Pimpinan (Kadiv)
+    try {
+        if ($userKadiv) {
+            $userKadiv->notify(new \App\Notifications\AssetMutationNotification([
+                'id_pindah' => null,
+                'title'     => 'Log Pengawasan: Cetak Laporan Maintenance',
+                'message'   => "User '{$printedBy}' ({$role}) baru saja mendownload Laporan Rekap Perawatan/Maintenance dengan total pengeluaran biaya Rp " . number_format($totalBiaya, 0, ',', '.'),
+                'icon'      => 'fas fa-print',
+                'bg_color'  => 'bg-info',
+                'url'       => url('/laporan-maintenance')
+            ]));
+        }
+        sleep(2);
+
+    if ($userKadept) {
+        $userKadept->notify(new \App\Notifications\AssetMutationNotification([
+            'id_pindah' => null,
+            'title'     => 'Log Pengawasan: Cetak Laporan Maintenance',
+            'message'   => "User '{$printedBy}' ({$role}) baru saja mendownload Laporan Rekap Perawatan/Maintenance dengan total pengeluaran biaya Rp " . number_format($totalBiaya, 0, ',', '.'),
+            'icon'      => 'fas fa-print',
+            'bg_color'  => 'bg-info',
+            'url'       => url('/laporan-maintenance')
+        ]));
+    }
+    } catch (\Exception $eMail) { }
 
     return view('superadmin.reports.print_maintenance', compact(
-        'maintenances', 'totalBiaya', 'stringFilter', 
+        'maintenances', 'totalBiaya', 'stringFilter', 'qrDataKadept', 'qrDataKadiv',
         'qrCodeSystem', 'printedBy', 'timestamp', 'kepalaDivisi', 'kepalaDept'
     ));
 }

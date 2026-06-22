@@ -94,220 +94,227 @@ class ApprovalController extends Controller
     }
 
     public function approve(Request $request, $id)
-    {
-        $request->validate([
-            'password' => 'required'
+{
+    $request->validate([
+        'password' => 'required'
+    ]);
+
+    if (!Hash::check($request->password, Auth::user()->password)) {
+        return back()->with('error', 'Password salah');
+    }
+
+    // Siapkan penampung data untuk kebutuhan kirim email di luar transaction
+    $dataNotif = [
+        'stage' => null,
+        'requested_by' => null,
+        'id_pindah' => null,
+        'kode_aset_lama' => null,
+        'kode_aset_baru' => null
+    ];
+
+    DB::beginTransaction();
+
+    try {
+        // 1. Ambil data approval beserta relasinya secara fresh
+        $approval = Approval::with('pindahAset.asset')->findOrFail($id);
+        $stageSebelumnya = $approval->stage;
+
+        // Jaring pengaman agar tidak di-approve dua kali
+        if ($approval->status !== 'menunggu') {
+            DB::rollBack();
+            return back()->with('error', 'Permintaan ini sudah diproses sebelumnya.');
+        }
+
+        // 2. UPDATE STATUS APPROVAL INTI
+        $approval->update([
+            'status' => 'disetujui',
+            'approved_by' => Auth::id(),
+            'approved_at' => now(),
         ]);
 
-        if (!Hash::check($request->password, Auth::user()->password)) {
-
-            return back()->with(
-                'error',
-                'Password salah'
-            );
+        $pindah = $approval->pindahAset;
+        if (!$pindah) {
+            throw new \Exception('Data perpindahan aset tidak ditemukan.');
         }
 
-        DB::beginTransaction();
+        // Simpan data mentah awal untuk backup notifikasi email nanti
+        $dataNotif['stage'] = $stageSebelumnya;
+        $dataNotif['requested_by'] = $pindah->requested_by;
+        $dataNotif['id_pindah'] = $pindah->id_pindah;
+        $dataNotif['kode_aset_lama'] = $pindah->asset->kode_aset ?? '-';
 
-        try {
+        // 3. GENERATE DIGITAL SIGNATURE
+        $digitalSignature = $this->generateDigitalSignature($pindah);
 
-            $approval = Approval::findOrFail($id);
+        Signature::create([
+            'id_aset' => $pindah->id_aset,
+            'id_pindah' => $pindah->id_pindah,
+            'user_id' => Auth::id(),
+            'signed_data' => $digitalSignature['signed_data'],
+            'signature' => $digitalSignature['signature'],
+            'public_key_fingerprint' => $digitalSignature['fingerprint'],
+            'algorithm' => 'RSA-SHA256',
+            'signed_at' => now(),
+        ]);
 
-            // UPDATE APPROVAL SEKARANG
-            $approval->update([
-                'status' => 'disetujui',
-                'approved_by' => Auth::id(),
-                'approved_at' => now(),
-            ]);
-
-            $pindah = $approval->pindahAset;
-
-            $digitalSignature = $this->generateDigitalSignature(
-                $pindah
-            );
-
-            Signature::create([
-                'id_aset' => $pindah->id_aset,
+        /*
+        |--------------------------------------------------------------------------
+        | ALUR STAGE 1 → BUAT PERMINTAAN STAGE 2
+        |--------------------------------------------------------------------------
+        */
+        if ($stageSebelumnya == 1) {
+            Approval::create([
                 'id_pindah' => $pindah->id_pindah,
-                'user_id' => Auth::id(),
+                'stage' => 2,
+                'status' => 'menunggu',
+                'approved_by' => null,
+                'approved_at' => null,
+            ]);
+            
+            // Opsional: Jika status induk ingin diubah jadi 'proses' saat stage 1 acc
+            $pindah->update([
+                'status' => 'menunggu' // Tetap menunggu karena butuh approval kadiv
+            ]);
+        }
 
-                'signed_data' =>
-                    $digitalSignature['signed_data'],
+        /*
+        |--------------------------------------------------------------------------
+        | ALUR STAGE 2 → FINAL APPROVAL (UBAH KODE & LOKASI ASET)
+        |--------------------------------------------------------------------------
+        */
+        if ($stageSebelumnya == 2) {
+            $aset = $pindah->asset; 
+            if (!$aset) {
+                throw new \Exception('Data aset tidak ditemukan.');
+            }
 
-                'signature' =>
-                    $digitalSignature['signature'],
+            // A. Ambil Data Lokasi Baru
+            $lokasiBaru = Lokasi::findOrFail($pindah->id_lokasi_baru);
+            $kodeLokasiBaru = str_pad($lokasiBaru->kode_lokasi, 2, '0', STR_PAD_LEFT);
 
-                'public_key_fingerprint' =>
-                    $digitalSignature['fingerprint'],
+            // B. Pecah Kode Aset Lama
+            $partKode = explode('.', $aset->kode_aset);
+            $kodeKategori = $partKode[1] ?? '00';
+            $kodeJenis    = $partKode[2] ?? '00';
+            $kodeBarang   = $partKode[3] ?? '00';
+            $kodeSumber   = $partKode[4] ?? '00';
+            $tahun        = $partKode[5] ?? date('Y');
 
-                'algorithm' => 'RSA-SHA256',
+            // C. Hitung Nomor Urut Baru
+            $lastAsetDiLokasiBaru = Asset::where('id_lokasi', $pindah->id_lokasi_baru)
+                ->where('id_kategori', $aset->id_kategori)
+                ->orderBy('id_aset', 'desc')
+                ->first();
 
-                'signed_at' => now(),
+            if ($lastAsetDiLokasiBaru) {
+                $lastUrut = (int) substr($lastAsetDiLokasiBaru->kode_aset, -3);
+                $nextUrut = $lastUrut + 1;
+            } else {
+                $nextUrut = 1;
+            }
+            $urutBaru = str_pad($nextUrut, 3, '0', STR_PAD_LEFT);
+
+            // D. Susun Kode Aset Baru
+            $kodeAsetBaru = "{$kodeLokasiBaru}.{$kodeKategori}.{$kodeJenis}.{$kodeBarang}.{$kodeSumber}.{$tahun}.{$urutBaru}";
+            $dataNotif['kode_aset_baru'] = $kodeAsetBaru;
+
+            // E. Regenerate QR Code
+            if ($aset->qr_code && file_exists(public_path($aset->qr_code))) {
+                @unlink(public_path($aset->qr_code));
+            }
+
+            $qrDirectory = public_path('qr-assets');
+            if (!file_exists($qrDirectory)) {
+                mkdir($qrDirectory, 0755, true);
+            }
+
+            $qrFileName = 'qr_' . Str::uuid() . '.png';
+            $qrPathBaru = 'qr-assets/' . $qrFileName;
+            
+            $signedUrl = URL::signedRoute('assets.scan', ['kode_aset' => $kodeAsetBaru]);
+
+            $result = Builder::create()
+                ->writer(new PngWriter())
+                ->data($signedUrl)
+                ->size(300)
+                ->margin(5)
+                ->build();
+
+            $result->saveToFile(public_path($qrPathBaru));
+
+            // F. UPDATE DATABASE UTAMA SECARA EKSPLISIT 🔑
+            $aset->update([
+                'kode_aset' => $kodeAsetBaru,
+                'id_amil'   => $pindah->id_amil_sesudah,
+                'id_lokasi' => $pindah->id_lokasi_baru,
+                'qr_code'   => $qrPathBaru,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | STAGE 1 → BUAT STAGE 2
-            |--------------------------------------------------------------------------
-            */
-
-            if ($approval->stage == 1) {
-
-                Approval::create([
-                    'id_pindah' => $approval->id_pindah,
-                    'stage' => 2,
-                    'status' => 'menunggu',
-                    'approved_by' => null,
-                    'approved_at' => null,
-                ]);
-
-                // 🔔 [NOTIFIKASI 1]: Beritahu Pengaju/Staf bahwa Stage 1 di-ACC Kadept
-                $pengaju = User::find($pindah->requested_by);
-                if ($pengaju) {
-                    $pengaju->notify(new AssetMutationNotification([
-                        'id_pindah' => $pindah->id_pindah,
-                        'title'     => 'Mutasi Disetujui Kadept (Stage 1)',
-                        'message'   => "Pengajuan mutasi aset dengan kode {$pindah->asset->kode_aset} telah disetujui Kepala Departemen dan diteruskan ke Kepala Divisi.",
-                        'icon'      => 'fas fa-check-circle',
-                        'bg_color'  => 'bg-success',
-                        'url'       => url('/approvals') 
-                    ]));
-                }
-
-                // 🔔 [NOTIFIKASI 2]: Beritahu Semua Kadiv untuk Melakukan Approval Stage 2
-                $kadivUsers = User::where('role', 'kadiv')->get();
-                foreach ($kadivUsers as $kadiv) {
-                    $kadiv->notify(new AssetMutationNotification([
-                        'id_pindah' => $pindah->id_pindah,
-                        'title'     => 'Permintaan Approval Stage 2',
-                        'message'   => "Mutasi aset dengan kode {$pindah->asset->kode_aset} menunggu persetujuan Anda.",
-                        'icon'      => 'fas fa-user-shield',
-                        'bg_color'  => 'bg-primary',
-                        'url'       => url('/approvals')
-                    ]));
-                }
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | STAGE 2 → FINAL APPROVAL
-            |--------------------------------------------------------------------------
-            */
-
-            if ($approval->stage == 2) {
-
-                $pindah = $approval->pindahAset;
-                $aset = $pindah->asset; // Ambil data aset terkait
-
-                // 1. AMBIL DATA LOKASI BARU UNTUK GENERATE KODE
-                $lokasiBaru = Lokasi::findOrFail($pindah->id_lokasi_baru);
-                $kodeLokasiBaru = str_pad($lokasiBaru->kode_lokasi, 2, '0', STR_PAD_LEFT);
-
-                // 2. PECAH KODE ASET LAMA UNTUK MENGAMBIL KOMPONEN YANG TIDAK BERUBAH
-                // Struktur lama: {Lokasi}.{Kategori}.{Jenis}.{Barang}.{Sumber}.{Tahun}.{Urut}
-                $partKode = explode('.', $aset->kode_aset);
-                
-                $kodeKategori = $partKode[1];
-                $kodeJenis    = $partKode[2];
-                $kodeBarang   = $partKode[3];
-                $kodeSumber   = $partKode[4];
-                $tahun        = $partKode[5];
-
-                // 3. HITUNG NOMOR URUT BARU DI LOKASI TUJUAN
-                $lastAsetDiLokasiBaru = Asset::where('id_lokasi', $pindah->id_lokasi_baru)
-                    ->where('id_kategori', $aset->id_kategori)
-                    ->orderBy('id_aset', 'desc')
-                    ->first();
-
-                if ($lastAsetDiLokasiBaru) {
-                    $lastUrut = (int) substr($lastAsetDiLokasiBaru->kode_aset, -3);
-                    $nextUrut = $lastUrut + 1;
-                } else {
-                    $nextUrut = 1;
-                }
-                $urutBaru = str_pad($nextUrut, 3, '0', STR_PAD_LEFT);
-
-                // 4. SUSUN KODE ASET BARU
-                $kodeAsetBaru = "{$kodeLokasiBaru}.{$kodeKategori}.{$kodeJenis}.{$kodeBarang}.{$kodeSumber}.{$tahun}.{$urutBaru}";
-
-                /* ==========================================
-                * 5. GENERATE QR CODE BARU (MENGGANTI YANG LAMA)
-                * ========================================== */
-                // Hapus file QR code lama dari storage jika filenya ada agar tidak memenuhi server
-                if ($aset->qr_code && file_exists(public_path($aset->qr_code))) {
-                    @unlink(public_path($aset->qr_code));
-                }
-
-                $qrDirectory = public_path('qr-assets');
-                if (!file_exists($qrDirectory)) {
-                    mkdir($qrDirectory, 0755, true);
-                }
-
-                $qrFileName = 'qr_' . Str::uuid() . '.png';
-                $qrPathBaru = 'qr-assets/' . $qrFileName;
-                
-                // Generate Signed URL baru berbasis kode aset yang baru
-                $signedUrl = URL::signedRoute('assets.scan', [
-                    'kode_aset' => $kodeAsetBaru
-                ]);
-
-                $result = Builder::create()
-                    ->writer(new PngWriter())
-                    ->data($signedUrl)
-                    ->size(300)
-                    ->margin(5)
-                    ->build();
-
-                $result->saveToFile(public_path($qrPathBaru));
-
-                /* ==========================================
-                * 6. UPDATE DATA ASET SECARA KESELURUHAN
-                * ========================================== */
-                $aset->update([
-                    'kode_aset' => $kodeAsetBaru,
-                    'id_amil'   => $pindah->id_amil_sesudah,
-                    'id_lokasi' => $pindah->id_lokasi_baru,
-                    'qr_code'   => $qrPathBaru,
-                ]);
-
-                // UPDATE STATUS PINDAH
-                $pindah->update([
-                    'status' => 'disetujui'
-                ]);
-
-                // 🔔 [NOTIFIKASI 3]: Beritahu Pengaju/Staf bahwa Mutasi Selesai (Final Approved)
-                $pengaju = User::find($pindah->requested_by);
-                if ($pengaju) {
-                    $pengaju->notify(new AssetMutationNotification([
-                        'id_pindah' => $pindah->id_pindah,
-                        'title'     => 'Mutasi Aset Disetujui Penuh (Final)',
-                        'message'   => "Selamat, pengajuan mutasi aset untuk kode {$kodeAsetBaru} telah disetujui oleh Kepala Divisi. Kode aset dan QR Code baru telah diperbarui.",
-                        'icon'      => 'fas fa-boxes',
-                        'bg_color'  => 'bg-success',
-                        'url'       => url('/riwayat-pindah-aset')
-                    ]));
-                }
-            }
-
-            DB::commit();
-
-            return redirect()
-                ->route('approvals.index')
-                ->with(
-                    'success',
-                    'Approval berhasil diproses'
-                );
-
-        } catch (\Exception $e) {
-
-            DB::rollBack();
-
-            return back()->with(
-                'error',
-                $e->getMessage()
-            );
+            $pindah->update([
+                'status' => 'disetujui'
+            ]);
         }
+
+        // COMMIT SEKARANG: mysql akan memaksa data kesimpan permanen
+        DB::commit();
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Gagal memproses approval database: ' . $e->getMessage());
     }
+
+    // 🔑 PROSES KIRIM EMAIL DI LUAR LINGKUP TRANSACTION
+    try {
+        $pengaju = User::find($dataNotif['requested_by']);
+
+        if ($dataNotif['stage'] == 1) {
+            // 1. Notif ke Staf
+            if ($pengaju) {
+                $pengaju->notify(new AssetMutationNotification([
+                    'id_pindah' => $dataNotif['id_pindah'],
+                    'title'     => 'Mutasi Disetujui Kadept (Stage 1)',
+                    'message'   => "Pengajuan mutasi aset dengan kode {$dataNotif['kode_aset_lama']} telah disetujui Kepala Departemen dan diteruskan ke Kepala Divisi.",
+                    'icon'      => 'fas fa-check-circle',
+                    'bg_color'  => 'bg-success',
+                    'url'       => url('/approvals') 
+                ]));
+            }
+
+            // 2. Notif ke Seluruh Kadiv
+            $kadivUsers = User::where('role', 'kadiv')->get();
+            foreach ($kadivUsers as $kadiv) {
+                $kadiv->notify(new AssetMutationNotification([
+                    'id_pindah' => $dataNotif['id_pindah'],
+                    'title'     => 'Permintaan Approval Stage 2',
+                    'message'   => "Mutasi aset dengan kode {$dataNotif['kode_aset_lama']} menunggu persetujuan Anda.",
+                    'icon'      => 'fas fa-user-shield',
+                    'bg_color'  => 'bg-primary',
+                    'url'       => url('/approvals')
+                ]));
+            }
+        }
+
+        if ($dataNotif['stage'] == 2) {
+            if ($pengaju) {
+                $kodeFinal = $dataNotif['kode_aset_baru'] ?? $dataNotif['kode_aset_lama'];
+                $pengaju->notify(new AssetMutationNotification([
+                    'id_pindah' => $dataNotif['id_pindah'],
+                    'title'     => 'Mutasi Aset Disetujui Penuh (Final)',
+                    'message'   => "Selamat, pengajuan mutasi aset untuk kode {$kodeFinal} telah disetujui oleh Kepala Divisi. Kode aset dan QR Code baru telah diperbarui.",
+                    'icon'      => 'fas fa-boxes',
+                    'bg_color'  => 'bg-success',
+                    'url'       => url('/riwayat-pindah-aset')
+                ]));
+            }
+        }
+    } catch (\Exception $eMail) {
+        // Abaikan limitasi mailtrap agar UI web tetap berhasil
+    }
+
+    return redirect()
+        ->route('approvals.index')
+        ->with('success', 'Approval berhasil diproses dan disimpan ke database.');
+}
 
     public function riwayatPindah(Request $request)
     {

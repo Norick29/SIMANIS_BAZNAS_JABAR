@@ -268,14 +268,22 @@
             Bandung, {{ now()->locale('id')->isoFormat('D MMMM Y') }}
         </div>
 
-         <table class="ttd-table" style="width: 100%; margin-top: 50px; text-align: center; font-family: sans-serif;">
+         {{-- COPY PASTE INI PADA BAGIAN BAWAH FILE BLADE KEDUA LAPORAN --}}
+        <table class="ttd-table" style="width: 100%; margin-top: 50px; text-align: center; font-family: sans-serif;">
             <tr>
+                {{-- Kiri: Kadept --}}
                 <td class="ttd-cell" style="width: 35%; vertical-align: top;">
-                    <div class="ttd-title" style="font-size: 14px; margin-bottom: 15px;">Dibuat Oleh,</div>
+                    <div class="ttd-title" style="font-size: 14px; margin-bottom: 15px;"></div>
                     
-                    <div class="ttd-space" style="height: 70px;"></div>
+                    <div class="ttd-space" style="height: 85px; text-align: center; vertical-align: middle;">
+                        @if(isset($qrDataKadept))
+                            <img src="data:image/svg+xml;base64,{{ base64_encode(QrCode::size(75)->generate($qrDataKadept)) }}" alt="QR Kadept" style="border: 1px solid #ddd; padding: 3px; background: #fff;">
+                        @else
+                            <div style="height: 75px;"></div>
+                        @endif
+                    </div>
                     
-                    <div class="ttd-line" style="font-weight: bold; text-decoration: underline; font-size: 14px;">
+                    <div class="ttd-line" style="font-weight: bold; text-decoration: underline; font-size: 14px; margin-top: 5px;">
                         {{ $kepalaDept }}
                     </div>
                     <div class="ttd-jabatan" style="font-size: 12px; color: #555; margin-top: 5px;">
@@ -283,24 +291,34 @@
                     </div>
                 </td>
 
+                {{-- Tengah: Audit Tracker System Stamp --}}
                 <td class="ttd-cell-qr" style="width: 30%; vertical-align: middle; text-align: center;">
                     @if(isset($qrCodeSystem))
-                        <div class="qr-container" style="display: inline-block; padding: 5px; border: 1px solid #ddd; background: #fff;">
-                            {{-- Eksekusi generator QR Code bawaan Laravel kamu di sini, contoh: --}}
-                            {{-- {!! QrCode::size(80)->generate($qrCodeSystem) !!} --}}
-                            <span style="font-size: 10px; display: block; color: #2e7d32; font-weight: bold; margin-top: 2px;">
-                                SYSTEM VERIFIED
+                        <div class="qr-container" style="display: inline-block; padding: 5px; border: 1px dashed #2e7d32; background: #fff;">
+                            <span style="font-size: 9px; display: block; color: #2e7d32; font-weight: bold; letter-spacing: 0.5px;">
+                                AUTOMATED STAMP
                             </span>
+                        </div>
+                        <div style="font-size: 8px; color: #777; margin-top: 6px; line-height: 1.2;">
+                            <span>Printed By: {{ $printedBy }}</span><br>
+                            <span>Time: {{ $timestamp }}</span>
                         </div>
                     @endif
                 </td>
 
+                {{-- Kanan: Kadiv --}}
                 <td class="ttd-cell" style="width: 35%; vertical-align: top;">
                     <div class="ttd-title" style="font-size: 14px; margin-bottom: 15px;">Mengetahui / Menyetujui,</div>
                     
-                    <div class="ttd-space" style="height: 70px;"></div>
+                    <div class="ttd-space" style="height: 85px; text-align: center; vertical-align: middle;">
+                        @if(isset($qrDataKadiv))
+                            <img src="data:image/svg+xml;base64,{{ base64_encode(QrCode::size(75)->generate($qrDataKadiv)) }}" alt="QR Kadiv" style="border: 1px solid #ddd; padding: 3px; background: #fff;">
+                        @else
+                            <div style="height: 75px;"></div>
+                        @endif
+                    </div>
                     
-                    <div class="ttd-line" style="font-weight: bold; text-decoration: underline; font-size: 14px;">
+                    <div class="ttd-line" style="font-weight: bold; text-decoration: underline; font-size: 14px; margin-top: 5px;">
                         {{ $kepalaDivisi }}
                     </div>
                     <div class="ttd-jabatan" style="font-size: 12px; color: #555; margin-top: 5px;">
