@@ -80,7 +80,7 @@
         .table-aset th {
             border: 1px solid #000;
             padding: 6px 4px;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: bold;
             background-color: #f2f2f2;
             text-align: center;
@@ -89,7 +89,7 @@
         .table-aset td {
             border: 1px solid #000;
             padding: 6px 5px;
-            font-size: 10px;
+            font-size: 9.5px;
             vertical-align: middle;
         }
         
@@ -205,10 +205,13 @@
                 <th style="width: 22%;">Nama Barang / Spesifikasi</th>
                 <th style="width: 12%;">Kategori</th>
                 <th style="width: 12%;">Lokasi Ruangan</th>
+                <th style="width: 12%;">Penanggung Jawab</th>
                 <th style="width: 11%;">Sumber Dana</th>
                 <th style="width: 5%;">Tahun</th>
                 <th style="width: 5%;">Kondisi</th>
-                <th style="width: 14%;">Harga Satuan (Rp)</th>
+                <th style="width: 6%;">Vol</th>
+                <th style="width: 11%;">Harga Satuan (Rp)</th>
+                <th style="width: 13%;">Nilai Buku (Rp)</th>
             </tr>
         </thead>
         <tbody>
@@ -222,18 +225,23 @@
                     </td>
                     <td class="text-center">{{ $asset->kategori->nama_kategori ?? '-' }}</td>
                     <td class="text-center">{{ $asset->lokasi->nama_lokasi ?? '-' }}</td>
+                    <td class="text-center font-weight-bold" style="color: #444;">{{ $asset->amil->nama ?? '-' }}</td>
                     <td class="text-center">{{ $asset->sumberDana->nama_sumber_dana ?? '-' }}</td>
                     <td class="text-center">{{ $asset->tahun }}</td>
                     <td class="text-center font-weight-bold" style="text-transform: uppercase; font-size: 9px;">
                         {{ $asset->kondisi }}
                     </td>
+                    <td class="text-center">{{ $asset->volume }}</td>
                     <td class="text-right">
                         {{ number_format($asset->harga, 0, ',', '.') }}
+                    </td>
+                    <td class="text-right font-weight-bold">
+                        {{ number_format($asset->nilai_buku, 0, ',', '.') }}
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="text-center" style="padding: 20px; font-style: italic; background-color: #fafafa;">
+                    <td colspan="12" class="text-center" style="padding: 20px; font-style: italic; background-color: #fafafa;">
                         Tidak ada data rekaman aset yang memenuhi parameter filter saat ini.
                     </td>
                 </tr>
@@ -243,7 +251,7 @@
             @if(count($assets) > 0)
                 <tr class="bg-summary font-weight-bold">
                     <td colspan="2" class="text-center" style="font-size: 10px; border-top: 2px double #000;">TOTAL REKAPITULASI</td>
-                    <td colspan="6" style="border-top: 2px double #000;">
+                    <td colspan="9" style="border-top: 2px double #000;">
                         Jumlah Item Record: {{ count($assets) }} Baris Data Aset Terdaftar
                     </td>
                     <td class="text-right" style="font-size: 11px; color: #1e4620; border-top: 2px double #000;">

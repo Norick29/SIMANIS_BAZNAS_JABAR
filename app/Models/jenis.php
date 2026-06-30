@@ -13,4 +13,9 @@ class Jenis extends Model
         'kode_jenis',
         'nama_jenis'
     ];
+
+    public function masterPenyusutan()
+    {
+        return $this->hasOne(MasterPenyusutan::class, 'id_jenis');
+    }
 }

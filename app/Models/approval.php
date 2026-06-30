@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Approval extends Model
 {
@@ -28,4 +29,12 @@ class Approval extends Model
     {
         return $this->belongsTo(User::class, 'approved_by', 'id_user');
     }
+
+   
+   public function reference()
+    {
+        return $this->morphTo('reference', 'approval_type', 'reference_id');
+    }
+
+
 }

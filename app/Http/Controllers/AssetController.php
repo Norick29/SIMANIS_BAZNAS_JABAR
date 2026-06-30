@@ -386,6 +386,7 @@ public function pindahAset(Request $request)
         // SIMPAN KE TABEL PINDAH_ASETS
         $pindah = PindahAset::create([
             'id_aset' => $aset->id_aset,
+            'id_lokasi_lama' => $aset->id_lokasi,
             'id_amil_sebelum' => $aset->id_amil,
             'id_amil_sesudah' => $request->id_amil_sesudah,
             'id_lokasi_baru' => $request->id_lokasi_baru,
@@ -508,8 +509,62 @@ public function update(Request $request, $id)
         'total_harga' => $totalHarga,
         'kondisi'     => $request->kondisi,
         // Jika diubah ke rusak, status operasional OTOMATIS dikunci ke 'nonaktif'
-        'status'      => $request->kondisi == 'rusak' ? 'nonaktif' : $request->status,
+        'status'      => in_array($request->kondisi, ['rusak', 'hilang']) ? 'nonaktif' : $request->status,
     ]);
+
+    // =========================================================================
+    // ⚡ TRIGGER OTOMATIS 3: SINKRONISASI UPDATE HARGA KE LOG PENYUSUTAN (BARU)
+    // =========================================================================
+    // Ambil rekor log penyusutan milik aset ini yang statusnya MASIH MENUNGGU AUDIT
+    $logPenyusutanAktif = \App\Models\PenyusutanAset::where('id_aset', $aset->id_aset)
+        ->where('status', 'menunggu')
+        ->whereNull('requested_by') // Pastikan ini log murni dari engine tahunan
+        ->first();
+
+    if ($logPenyusutanAktif) {
+        // Ambil settingan master penyusutan untuk menghitung ulang persentase
+        $setting = \App\Models\MasterPenyusutan::where('id_jenis', $aset->id_jenis)
+            ->where('status', 'aktif')
+            ->first();
+
+        if ($setting) {
+            $tahunSekarang = (int)date('Y');
+            $umurAset = $tahunSekarang - (int)$aset->tahun;
+            
+            $nilaiResiduMinimumTotal = $totalHarga * 0.10; // Batas 10%
+            $persentaseTahunan = $setting->persentase / 100;
+
+            // Hitung ulang akumulasi nilai penyusutan berdasarkan total_harga yang baru
+            if ($umurAset >= $setting->umur_ekonomis) {
+                $totalNilaiSetelah = $nilaiResiduMinimumTotal;
+                $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
+            } else {
+                $totalNilaiPenyusutan = $totalHarga * ($persentaseTahunan * $umurAset);
+                $totalNilaiCalculated = $totalHarga - $totalNilaiPenyusutan;
+                
+                if ($totalNilaiCalculated < $nilaiResiduMinimumTotal) {
+                    $totalNilaiSetelah = $nilaiResiduMinimumTotal;
+                    $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
+                } else {
+                    $totalNilaiSetelah = $totalNilaiCalculated;
+                }
+            }
+
+            // Update baris log di tabel penyusutan_aset agar angkanya sinkron
+            $logPenyusutanAktif->update([
+                'nilai_awal'               => $totalHarga,
+                'nilai_penyusutan'         => $totalNilaiPenyusutan,
+                'nilai_setelah_penyusutan' => $totalNilaiSetelah,
+            ]);
+
+            // Sekaligus perbarui kembali nilai total_harga di master aset agar match dengan potongan setelah susut yang baru
+            $hargaPerUnitSetelahSusut = $totalNilaiSetelah / $aset->volume;
+            $aset->update([
+                'harga'       => $hargaPerUnitSetelahSusut,
+                'total_harga' => $totalNilaiSetelah
+            ]);
+        }
+    }
 
     // TRIGGER OTOMATIS: Jika kondisi berubah dari Baik -> Rusak
     if ($kondisiSebelumnya != 'rusak' && $request->kondisi == 'rusak') {
@@ -525,9 +580,28 @@ public function update(Request $request, $id)
         ]);
     }
 
+    // =========================================================================
+    // 🔍 TRIGGER OTOMATIS 2: Antisipasi jika diubah MANUAL dari Hilang -> Baik/Rusak
+    // (Jika dari menu induk diubah dari hilang ke kondisi lain, bersihkan record hilangnya)
+    // =========================================================================
+    if ($kondisiSebelumnya == 'hilang' && $request->kondisi != 'hilang') {
+        // Cek apakah ada record kronologi aktif di tabel aset_hilang
+        if ($aset->asetHilangRecord) {
+            $aset->asetHilangRecord->delete(); // Softdelete record kehilangannya
+        }
+    }
+
+    // Berikan respons pesan sukses yang adaptif
+    $pesan = 'Data aset berhasil diperbarui.';
+    if ($request->kondisi == 'hilang') {
+        return redirect()
+            ->route('hilang.index')
+            ->with('warning', 'Aset berhasil diubah ke kondisi Hilang. Silakan lengkapi kronologi Berita Acara.');
+    }
+
     return redirect()
         ->route('assets.index')
-        ->with('success', 'Data aset berhasil diperbarui.');
+        ->with('success', $pesan);
 }
 
 public function destroy($id)
@@ -547,6 +621,173 @@ public function getJsonDetail($id)
     return response()->json($aset);
 }
 
+private function buildImportHeaderMap(array $headerRow): array
+{
+    $map = [];
+
+    foreach ($headerRow as $index => $header) {
+        $normalized = $this->normalizeImportHeader($header);
+
+        if ($normalized !== '' && !array_key_exists($normalized, $map)) {
+            $map[$normalized] = $index;
+        }
+    }
+
+    return $map;
+}
+
+private function normalizeImportHeader($value): string
+{
+    $normalized = strtolower(trim((string) $value));
+    $normalized = str_replace(['_', '-', '/', '\\', '.', ':', '(', ')'], ' ', $normalized);
+    $normalized = preg_replace('/\s+/', ' ', $normalized);
+
+    return trim($normalized);
+}
+
+private function importCell(array $row, array $headerMap, array $headerCandidates, ?int $fallbackIndex = null)
+{
+    foreach ($headerCandidates as $candidate) {
+        $key = $this->normalizeImportHeader($candidate);
+
+        if (array_key_exists($key, $headerMap)) {
+            return $row[$headerMap[$key]] ?? '';
+        }
+    }
+
+    if ($fallbackIndex !== null) {
+        return $row[$fallbackIndex] ?? '';
+    }
+
+    return '';
+}
+
+private function importValueFilled($value): bool
+{
+    return $value !== null && trim((string) $value) !== '';
+}
+
+private function resolveImportFinancialValues($volumeRaw, $hargaRaw, $totalRaw, ?Asset $asset = null): array
+{
+    $volume = $this->importValueFilled($volumeRaw)
+        ? (int) round($this->parseImportNumber($volumeRaw, 1))
+        : (int) ($asset->volume ?? 1);
+    $volume = $volume > 0 ? $volume : 1;
+
+    $harga = $this->importValueFilled($hargaRaw)
+        ? $this->parseImportNumber($hargaRaw, 0)
+        : (float) ($asset->harga ?? 0);
+
+    if ($this->importValueFilled($hargaRaw)) {
+        $totalHarga = $volume * $harga;
+    } elseif ($this->importValueFilled($totalRaw)) {
+        $totalHarga = $this->parseImportNumber($totalRaw, 0);
+        $harga = $totalHarga > 0 ? ($totalHarga / $volume) : 0;
+    } else {
+        $totalHarga = $volume * $harga;
+    }
+
+    return [$volume, $harga, $totalHarga];
+}
+
+private function parseImportNumber($value, float $default = 0): float
+{
+    if ($value === null || $value === '') {
+        return $default;
+    }
+
+    if (is_numeric($value)) {
+        return max(0, (float) $value);
+    }
+
+    $number = trim((string) $value);
+    $number = str_ireplace(['rp', 'idr'], '', $number);
+    $number = preg_replace('/[^0-9,.\-]/', '', $number);
+
+    if ($number === '' || $number === '-') {
+        return $default;
+    }
+
+    if (str_contains($number, ',') && str_contains($number, '.')) {
+        if (strrpos($number, ',') > strrpos($number, '.')) {
+            $number = str_replace('.', '', $number);
+            $number = str_replace(',', '.', $number);
+        } else {
+            $number = str_replace(',', '', $number);
+        }
+    } elseif (str_contains($number, ',')) {
+        $parts = explode(',', $number);
+        $lastPart = end($parts);
+
+        if (count($parts) > 2 || strlen($lastPart) === 3) {
+            $number = str_replace(',', '', $number);
+        } else {
+            $number = str_replace(',', '.', $number);
+        }
+    } elseif (str_contains($number, '.')) {
+        $parts = explode('.', $number);
+        $lastPart = end($parts);
+
+        if (count($parts) > 2 || strlen($lastPart) === 3) {
+            $number = str_replace('.', '', $number);
+        }
+    }
+
+    return is_numeric($number) ? max(0, (float) $number) : $default;
+}
+
+private function syncPendingPenyusutanAfterAssetValueChange(Asset $aset, float $totalHarga): void
+{
+    $logPenyusutanAktif = \App\Models\PenyusutanAset::where('id_aset', $aset->id_aset)
+        ->where('status', 'menunggu')
+        ->whereNull('requested_by')
+        ->first();
+
+    if (!$logPenyusutanAktif) {
+        return;
+    }
+
+    $setting = \App\Models\MasterPenyusutan::where('id_jenis', $aset->id_jenis)
+        ->where('status', 'aktif')
+        ->first();
+
+    if (!$setting) {
+        return;
+    }
+
+    $tahunSekarang = (int) date('Y');
+    $umurAset = $tahunSekarang - (int) $aset->tahun;
+    $nilaiResiduMinimumTotal = $totalHarga * 0.10;
+    $persentaseTahunan = $setting->persentase / 100;
+
+    if ($umurAset >= $setting->umur_ekonomis) {
+        $totalNilaiSetelah = $nilaiResiduMinimumTotal;
+        $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
+    } else {
+        $totalNilaiPenyusutan = $totalHarga * ($persentaseTahunan * $umurAset);
+        $totalNilaiCalculated = $totalHarga - $totalNilaiPenyusutan;
+
+        if ($totalNilaiCalculated < $nilaiResiduMinimumTotal) {
+            $totalNilaiSetelah = $nilaiResiduMinimumTotal;
+            $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
+        } else {
+            $totalNilaiSetelah = $totalNilaiCalculated;
+        }
+    }
+
+    $logPenyusutanAktif->update([
+        'nilai_awal'               => $totalHarga,
+        'nilai_penyusutan'         => $totalNilaiPenyusutan,
+        'nilai_setelah_penyusutan' => $totalNilaiSetelah,
+    ]);
+
+    $volume = $aset->volume > 0 ? $aset->volume : 1;
+    $aset->update([
+        'harga'       => $totalNilaiSetelah / $volume,
+        'total_harga' => $totalNilaiSetelah,
+    ]);
+}
+
 public function import(Request $request)
     {
         // 1. Validasi Awal: Pastikan Master Data Utama Tidak Kosong
@@ -561,11 +802,13 @@ public function import(Request $request)
 
         // Load file excel ke dalam array
         $rows = IOFactory::load($request->file('file')->getPathname())->getActiveSheet()->toArray();
+        $headerMap = $this->buildImportHeaderMap($rows[0] ?? []);
 
         DB::beginTransaction();
         
         $skipped = [];
         $inserted = 0;
+        $updated = 0;
         
         // === TRACKER INTERNAL ANTI-DUPLICATE DALAM MEMORI TRANSAKSI ===
         $generatedCodes = []; 
@@ -601,22 +844,34 @@ public function import(Request $request)
                     return $val !== null ? trim($val) : '';
                 }, $row);
 
-                // Mapping Kolom berdasarkan file Excel Riil BAZNAS (Indeks Array Mulai dari 0)
-                // A=0 (t), B=1 (No Register), C=2 (Barang), D=3 (Merek), E=4 (Warna), F=5 (Ruangan), G=6 (Kategori), H=7 (Jenis), I=8 (Sumber Dana), J=9 (Tahun Beli), K=10 (No Urut Regist), L=11 (Status/Kondisi), M=12 (Keterangan)
-                $txtBarang   = $cleanRow[2]  ?? '';
-                $merk        = $cleanRow[3]  ?? '';
-                $txtWarna    = $cleanRow[4]  ?? '';
-                $txtLokasi   = $cleanRow[5]  ?? '';
-                $txtKategori = $cleanRow[6]  ?? '';
-                $txtJenis    = $cleanRow[7]  ?? '';
-                $txtSumber   = $cleanRow[8]  ?? '';
-                $tahun       = $cleanRow[9]  ?? date('Y');
+                // Mapping kolom tetap kompatibel dengan format lama, tetapi bisa membaca header baru.
+                $txtBarang   = $this->importCell($cleanRow, $headerMap, ['nama barang', 'barang'], 2);
+                $merk        = $this->importCell($cleanRow, $headerMap, ['merek', 'merk'], 3);
+                $txtWarna    = $this->importCell($cleanRow, $headerMap, ['warna'], 4);
+                $txtLokasi   = $this->importCell($cleanRow, $headerMap, ['ruangan', 'lokasi', 'lokasi ruangan'], 5);
+                $txtKategori = $this->importCell($cleanRow, $headerMap, ['kategori'], 6);
+                $txtJenis    = $this->importCell($cleanRow, $headerMap, ['jenis', 'jenis aset'], 7);
+                $txtSumber   = $this->importCell($cleanRow, $headerMap, ['sumber dana', 'sumber'], 8);
+                $tahun       = $this->importCell($cleanRow, $headerMap, ['tahun beli', 'tahun perolehan', 'tahun'], 9) ?: date('Y');
                 
                 // === AMBIL DATA NO URUT ASLI EXCEL DARI KOLOM K (INDEX 10) ===
-                $noUrutExcel = $cleanRow[10] ?? '';
+                $noUrutExcel = $this->importCell($cleanRow, $headerMap, ['no urut regist', 'no urut register', 'no urut', 'nomor urut'], 10);
                 
-                $statusExcel = $cleanRow[11] ?? 'Baik'; 
-                $keterangan  = $cleanRow[12] ?? '';
+                $statusExcel = $this->importCell($cleanRow, $headerMap, ['status kondisi', 'status', 'kondisi'], 11) ?: 'Baik';
+                $keterangan  = $this->importCell($cleanRow, $headerMap, ['keterangan', 'ket'], 12);
+
+                $volumeRaw = $this->importCell($cleanRow, $headerMap, ['volume', 'volume unit', 'jumlah', 'jumlah unit', 'qty', 'qty unit', 'kuantitas']);
+                $hargaRaw = $this->importCell($cleanRow, $headerMap, ['harga satuan', 'harga satuan rp', 'harga', 'harga rp', 'nilai satuan', 'nilai satuan rp', 'harga unit', 'harga per unit']);
+                $totalHargaRaw = $this->importCell($cleanRow, $headerMap, ['total harga', 'total harga rp', 'harga total', 'harga total rp', 'nilai total', 'nilai total rp', 'total nilai', 'total nilai rp', 'nilai aset', 'nilai aset rp', 'nilai perolehan', 'nilai perolehan rp']);
+                $hasFinancialValue = $this->importValueFilled($volumeRaw)
+                    || $this->importValueFilled($hargaRaw)
+                    || $this->importValueFilled($totalHargaRaw);
+
+                [$volumeImport, $hargaImport, $totalHargaImport] = $this->resolveImportFinancialValues(
+                    $volumeRaw,
+                    $hargaRaw,
+                    $totalHargaRaw
+                );
 
                 // Jika kolom nama barang kosong, abaikan baris tersebut
                 if (!$txtBarang) {
@@ -660,6 +915,31 @@ public function import(Request $request)
                 $kodeBarang   = str_pad($barang->kode_barang, 2, '0', STR_PAD_LEFT);
                 $kodeSumber   = $sumber->kode_sumber_dana;
                 $tahunDuaDig  = substr($tahun, -2);
+
+                if ($noUrutExcel !== '' && is_numeric($noUrutExcel)) {
+                    $urutDariExcel = str_pad((int) $noUrutExcel, 3, '0', STR_PAD_LEFT);
+                    $kodeAsetDariExcel = "{$kodeLokasi}.{$kodeKategori}.{$kodeJenis}.{$kodeBarang}.{$kodeSumber}.{$tahunDuaDig}.{$urutDariExcel}";
+                    $asetExisting = Asset::where('kode_aset', $kodeAsetDariExcel)->first();
+
+                    if ($asetExisting && $hasFinancialValue) {
+                        [$volumeUpdate, $hargaUpdate, $totalHargaUpdate] = $this->resolveImportFinancialValues(
+                            $volumeRaw,
+                            $hargaRaw,
+                            $totalHargaRaw,
+                            $asetExisting
+                        );
+
+                        $asetExisting->update([
+                            'volume'      => $volumeUpdate,
+                            'harga'       => $hargaUpdate,
+                            'total_harga' => $totalHargaUpdate,
+                        ]);
+
+                        $this->syncPendingPenyusutanAfterAssetValueChange($asetExisting->fresh(), $totalHargaUpdate);
+                        $updated++;
+                        continue;
+                    }
+                }
 
                 // =========================================================================
                 // PERBAIKAN LOGIKA NOMOR URUT: PRIORITAS NO URUT EXCEL -> FALLBACK AUTO INCREMENT
@@ -723,7 +1003,7 @@ public function import(Request $request)
 
                 $resultQr->saveToFile(public_path($qrPath));
 
-                // 8. INSERT DATA KE DATABASE DENGAN NILAI DEFAULT MANIPULASI
+                // 8. INSERT DATA KE DATABASE DENGAN NILAI FINANSIAL DARI EXCEL JIKA TERSEDIA
                 Asset::create([
                     'kode_aset'       => $kodeAsetResmi, // Kode resmi terstruktur
                     'id_barang'       => $barang->id_barang,
@@ -734,10 +1014,10 @@ public function import(Request $request)
                     'id_sumber_dana'  => $sumber->id_sumber_dana,
                     'merk'            => $detailMerk, // Menyimpan kombinasi Merk + Warna + Keterangan Excel
                     'tahun'           => $tahun,
-                    'volume'          => 1,           // Default value: 1 per baris record
+                    'volume'          => $volumeImport,
                     'satuan'          => 'Unit',      // Default value
-                    'harga'           => 0,           // Default value: Diisi 0 karena histori harga kosong di excel
-                    'total_harga'     => 0,           // Default value
+                    'harga'           => $hargaImport,
+                    'total_harga'     => $totalHargaImport,
                     'kondisi'         => $kondisiDB,  // Hasil konversi status dari Excel
                     'status'          => 'aktif',     // Default value: Langsung siap beroperasi
                     'qr_code'         => $qrPath,     // Menyimpan path file QR Code yang baru dibuat
@@ -748,15 +1028,21 @@ public function import(Request $request)
 
             DB::commit();
 
+            $hasilImport = "Berhasil menyimpan {$inserted} data aset baru";
+            if ($updated > 0) {
+                $hasilImport .= " dan memperbarui nilai {$updated} data aset lama";
+            }
+            $hasilImport .= '.';
+
             // Jika ada baris data yang terlewat (karena nama master belum terdaftar)
             if ($skipped) {
                 return back()->with([
-                    'warning'    => "Proses import selesai. Berhasil menyimpan {$inserted} data aset.",
+                    'warning'    => "Proses import selesai. {$hasilImport}",
                     'duplicates' => $skipped
                 ]);
             }
 
-            return back()->with('success', "Luar biasa! Sukses meng-import {$inserted} data aset langsung menggunakan format asli BAZNAS.");
+            return back()->with('success', "Luar biasa! Sukses import Excel. {$hasilImport}");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -791,6 +1077,10 @@ public function reportIndex()
     $lokasis   = Lokasi::orderBy('nama_lokasi', 'asc')->get();
     $kategoris = Kategori::orderBy('nama_kategori', 'asc')->get();
     $sumbers   = Sumber::orderBy('nama_sumber_dana', 'asc')->get();
+    
+    // 🔑 KUNCI PERBAIKAN: Ambil data master Jenis Aset agar Card 4 & 5 tidak crash!
+    // Catatan: Sesuaikan nama Model 'Jenis' jika di proyekmu namanya berbeda (misal: JenisAsset)
+    $jenises   = \App\Models\Jenis::orderBy('nama_jenis', 'asc')->get(); 
 
     // Mengambil list tahun unik yang ada di database untuk filter tahun beli
     $tahuns = Asset::select('tahun')
@@ -798,20 +1088,28 @@ public function reportIndex()
         ->orderBy('tahun', 'desc')
         ->pluck('tahun');
 
-    return view('superadmin.reports.index', compact('lokasis', 'kategoris', 'sumbers', 'tahuns'));
+    // 🔑 FIXED: Tambahkan 'jenises' ke dalam compact
+    return view('superadmin.reports.index', compact('lokasis', 'kategoris', 'sumbers', 'tahuns', 'jenises'));
 }
 
 public function reportAssetPrint(Request $request)
 {
     // 1. Logika Query & Filtering Aset (Tetap sama seperti kode kamu)
-    $query = Asset::with(['barang', 'kategori', 'jenis', 'lokasi', 'amil', 'sumberDana']);
+    $query = Asset::with(['barang', 'kategori', 'jenis', 'lokasi', 'amil', 'sumberDana', 'penyusutanRecords']);
     if ($request->filled('id_lokasi')) { $query->where('id_lokasi', $request->id_lokasi); }
     if ($request->filled('id_kategori')) { $query->where('id_kategori', $request->id_kategori); }
+    if ($request->filled('id_sumber_dana')) { $query->where('id_sumber_dana', $request->id_sumber_dana); }
     if ($request->filled('tahun')) { $query->where('tahun', $request->tahun); }
+    if ($request->filled('kondisi')) { $query->where('kondisi', $request->kondisi); }
 
     $assets = $query->orderBy('kode_aset', 'asc')->get();
     $totalVolume = $assets->sum('volume');
-    $totalHarga  = $assets->sum('total_harga');
+    $totalHarga  = $assets->sum(function ($asset) {
+        return $asset->nilai_buku;
+    });
+    $totalNilaiPerolehan = $assets->sum(function ($asset) {
+        return $asset->nilai_perolehan;
+    });
 
     $filterInfo = [];
     if ($request->filled('id_lokasi')) { $filterInfo[] = 'Lokasi: ' . \App\Models\Lokasi::find($request->id_lokasi)->nama_lokasi; }
@@ -877,7 +1175,7 @@ $qrCodeSystem = "SIMASET AUDIT STAMP | Operator Cetak: {$printedBy} ({$role}) | 
     } catch (\Exception $eMail) { }
 
     return view('superadmin.reports.print_asset', compact(
-    'assets', 'totalVolume', 'totalHarga', 'stringFilter', 
+    'assets', 'totalVolume', 'totalHarga', 'totalNilaiPerolehan', 'stringFilter', 
     'qrDataKadept', 'qrDataKadiv', 'qrCodeSystem', 'printedBy', 'timestamp', 'kepalaDivisi', 'kepalaDept'
 ));
 }

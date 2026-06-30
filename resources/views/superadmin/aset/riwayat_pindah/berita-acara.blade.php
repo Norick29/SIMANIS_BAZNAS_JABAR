@@ -4,28 +4,28 @@
 
 <div class="container-fluid">
 
-    <div class="card shadow">
+    <div class="mb-3">
+        <a href="{{ route('riwayat.pindah') }}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Kembali ke Daftar
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
 
         <div class="card-body p-5">
-
             <div class="text-center mb-5">
-
                 <h3 class="font-weight-bold">
                     BERITA ACARA
                 </h3>
-
                 <h5>
                     PERPINDAHAN ASET
                 </h5>
-
                 <hr>
             </div>
-
             <p>
                 Pada hari ini telah dilakukan perpindahan aset
                 dengan detail berikut:
             </p>
-
             <table class="table table-bordered">
 
                 <tr>
@@ -40,7 +40,7 @@
 
                 <tr>
                     <th>Lokasi Sebelum</th>
-                    <td>{{ $pindah->asset->lokasi->nama_lokasi }}</td>
+                    <td>{{ $pindah->lokasiLama->nama_lokasi }}</td>
                 </tr>
 
                 <tr>

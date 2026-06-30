@@ -37,6 +37,10 @@
                             <span class="text-success font-weight-bold">
                                 * Kolom Warna & Keterangan di Excel akan otomatis digabungkan ke dalam kolom Merk di sistem agar data tidak hilang.
                             </span>
+                            <br>
+                            <span class="text-primary font-weight-bold">
+                                * Opsional: tambahkan kolom Volume/Jumlah, Harga/Harga Satuan, dan Total Harga apabila data nilai aset sudah tersedia.
+                            </span>
                         </small>
                     </div>
 

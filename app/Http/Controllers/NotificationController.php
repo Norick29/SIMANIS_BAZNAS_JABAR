@@ -25,4 +25,12 @@ class NotificationController extends Controller
 
         return redirect($destinationUrl);
     }
+
+    public function markAllAsRead(Request $request)
+{
+    // Mengubah semua notifikasi yang belum dibaca milik user aktif menjadi sudah dibaca
+    $request->user()->unreadNotifications->markAsRead();
+
+    return redirect()->back()->with('success', 'Semua pemberitahuan berhasil dibersihkan.');
+}
 }

@@ -17,7 +17,10 @@ use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
-
+use App\Http\Controllers\AsetHilangController;
+use App\Http\Controllers\PenyusutanAsetController;
+use App\Http\Controllers\MasterPenyusutanController;
+use App\Http\Controllers\PenghapusanAsetController;
 Route::get('/', function () {
     return redirect()->route('login');
 });
@@ -73,6 +76,26 @@ Route::middleware('auth')->group(function () {
     Route::put('/sumber/{id}', [SumberController::class, 'update'])->name('sumber.update');
     Route::delete('/sumber/{id}', [SumberController::class, 'destroy'])->name('sumber.destroy');
 
+    Route::prefix('master-penyusutan')->group(function () {
+
+    Route::get('/', [MasterPenyusutanController::class, 'index'])
+        ->name('master-penyusutan.index');
+
+    Route::post('/store', [MasterPenyusutanController::class, 'store'])
+        ->name('master-penyusutan.store');
+
+    Route::put('/update/{id}', [MasterPenyusutanController::class, 'update'])
+        ->name('master-penyusutan.update');
+
+    Route::delete('/destroy/{id}', [MasterPenyusutanController::class, 'destroy'])
+        ->name('master-penyusutan.destroy');
+
+});
+
+    Route::get('/penghapusan-aset', [PenghapusanAsetController::class,'index'])->name('penghapusan.index');
+    Route::get('/penghapusan-aset/{id}', [PenghapusanAsetController::class,'show'])->name('penghapusan.show');
+    Route::get('/penghapusan-aset/cetak-berita-acara/{id}', [PenghapusanAsetController::class, 'cetakBeritaAcaraPdf'])->name('penghapusan.cetak-ba');
+
     Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
     Route::post('/assets/store', [AssetController::class, 'store'])->name('assets.store');
     Route::get('/assets/bulk-print-qr', [AssetController::class, 'bulkPrintQr'])->name('assets.bulk-print-qr');
@@ -86,6 +109,30 @@ Route::middleware('auth')->group(function () {
     Route::get('/assets/referensi-data', [AssetController::class, 'getReferensiData']);
     Route::get('/assets/referensi-pindah', [AssetController::class, 'getReferensiPindah']);
     Route::get('/riwayat-pindah-aset', [ApprovalController::class, 'riwayatPindah'])->name('riwayat.pindah');
+
+    Route::prefix('aset-hilang')->group(function () {
+    Route::get('/', [AsetHilangController::class, 'index'])->name('hilang.index');
+    Route::post('/store', [AsetHilangController::class, 'store'])->name('hilang.store');
+    Route::get('/show/{id}', [AsetHilangController::class, 'showBeritaAcara'])->name('hilang.berita-acara');
+    Route::get('/cetak-berita-acara/{id}', [AsetHilangController::class, 'downloadBeritaAcaraPdf'])->name('hilang.cetak');
+
+    Route::middleware(['auth'])->group(function () {
+    // Route halaman utama rekap penyusutan
+    Route::get('/aset-penyusutan', [PenyusutanAsetController::class, 'index'])->name('penyusutan.index');
+    Route::get('/aset-penyusutan/cetak-berita-acara/{id}', [PenyusutanAsetController::class, 'cetakBaPeremajaanPdf'])->name('peremajaan.cetak-ba');
+
+    // Route pengajuan tindakan audit pasca-penyusutan 5 tahun
+    Route::post('/aset-penyusutan/peremajaan/{id}', [PenyusutanAsetController::class, 'ajukanPeremajaan'])->name('penyusutan.peremajaan');
+    Route::post('/aset-penyusutan/penghapusan/{id}', [PenyusutanAsetController::class, 'ajukanPenghapusan'])->name('penyusutan.penghapusan');
+});
+    
+    // ⚡ TAMBAHKAN ROUTE INI BRO!
+    Route::post('/ditemukan/{id_hilang}', [AsetHilangController::class, 'ditemukan'])->name('hilang.ditemukan');
+    
+        Route::get('/verify-document/{id}', [AsetHilangController::class, 'verifyPublic'])
+            ->name('hilang.verify_public')
+            ->middleware('signed');
+    });
 
     // Route monitoring pimpinan yang menumpang ke fungsi index AssetController
     Route::get('/monitoring/assets', [AssetController::class, 'index'])->name('monitoring.assets');
@@ -114,9 +161,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/asset-inventaris', [AssetController::class, 'reportAssetPrint'])->name('asset.print');
         Route::get('/reports/maintenance', [MaintenanceController::class, 'reportMaintenancePrint'])->name('maintenance.print');
         Route::get('/reports/mutasi', [AssetController::class, 'reportMutasiPrint'])->name('mutasi.print');
+        Route::get('/reports/penyusutan/print', [PenyusutanAsetController::class, 'printLaporanPenyusutan'])->name('penyusutan.print');
+        Route::get('/reports/penghapusan/print', [PenghapusanAsetController::class, 'printLaporanPenghapusan'])->name('penghapusan.print');
     });
 });
-
+Route::post('/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.markAllRead');
 Route::get('/scan/{kode_aset}', [AssetController::class, 'scanQr'])->name('assets.scan') ->middleware('signed');
 
 // Halaman publik untuk verifikasi tanda tangan digital lewat scan QR

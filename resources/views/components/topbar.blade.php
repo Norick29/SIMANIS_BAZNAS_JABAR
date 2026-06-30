@@ -83,8 +83,18 @@
                             
                             <div class="dropdown-list dropdown-menu dropdown-menu-right shadow animated--grow-in"
                                 aria-labelledby="alertsDropdown">
-                                <h6 class="dropdown-header bg-success border-success"> {{-- Menggunakan tema hijau BAZNAS --}}
-                                    Pemberitahuan Sistem
+                                <h6 class="dropdown-header bg-success border-success d-flex justify-content-between align-items-center">
+                                    <span>Pemberitahuan Sistem</span>
+                                    
+                                    {{-- 🔑 FITUR BARU: Tombol Bersihkan Semua Notifikasi (Hanya muncul jika ada notifikasi unread) --}}
+                                    @if(auth()->user()->unreadNotifications->count() > 0)
+                                        <form action="{{ route('notifications.markAllRead') }}" method="POST" class="m-0" id="formClearNotif">
+                                            @csrf
+                                            <button type="submit" class="btn btn-xs p-0 text-white font-weight-bold" style="font-size: 10px; background: none; border: none; text-decoration: underline;" onclick="return confirm('Bersihkan semua pemberitahuan?')">
+                                                <i class="fas fa-check-double mr-1"></i>Tandai Semua Dibaca
+                                            </button>
+                                        </form>
+                                    @endif
                                 </h6>
                                 
                                 @forelse(auth()->user()->unreadNotifications->take(5) as $notification)
@@ -98,21 +108,22 @@
                                             <div class="small text-gray-500">
                                                 {{ $notification->created_at->diffForHumans() }}
                                             </div>
-                                            <span class="font-weight-bold d-block text-dark">
-                                                {{ $notification->data['title'] }}
+                                            <span class="font-weight-bold d-block text-dark" style="font-size: 11.5px; line-height: 1.3;">
+                                                {{ $notification->data['title'] ?? 'Pemberitahuan' }}
                                             </span>
-                                            <span class="small text-gray-600">
-                                                {{ $notification->data['message'] }}
+                                            <span class="small text-gray-600 d-block" style="font-size: 10.5px; max-width: 230px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                {{ $notification->data['message'] ?? '' }}
                                             </span>
                                         </div>
                                     </a>
                                 @empty
-                                    <div class="dropdown-item text-center small text-gray-500 py-3">
-                                        <i class="fas fa-check-circle text-success mr-1"></i> Tidak ada notifikasi baru
+                                    <div class="dropdown-item text-center small text-gray-500 py-4">
+                                        <i class="fas fa-check-circle text-success fa-2x d-block mb-2"></i> 
+                                        Tidak ada pemberitahuan baru, bro!
                                     </div>
                                 @endforelse
                                 
-                                <a class="dropdown-item text-center small text-gray-500" href="#">Lihat Semua Pemberitahuan</a>
+                                <a class="dropdown-item text-center small text-gray-500 py-2 font-weight-bold" href="#">Lihat Semua Pemberitahuan</a>
                             </div>
                         </li>
 

@@ -1,15 +1,16 @@
-@extends('layouts.app') {{-- Sesuaikan dengan nama master blade layout kamu --}}
+@extends('layouts.app')
 
 @section('content')
 <div class="container-fluid">
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-file-contract mr-2"></i> Manajemen Laporan Aset
+            <i class="fas fa-file-contract mr-2"></i> Manajemen Laporan & Audit Aset
         </h1>
     </div>
 
     <div class="row">
+        {{-- SEKTOR 1: LAPORAN INVENTARIS ASET --}}
         <div class="col-xl-6 col-md-12 mb-4">
             <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
@@ -56,8 +57,8 @@
                                     <option value="">-- Semua Sumber Dana --</option>
                                     @foreach($sumbers as $s)
                                         <option value="{{ $s->id_sumber_dana }}">{{ $s->nama_sumber_dana }}</option>
-                                    @endforeach {{-- <--- SEHARUSNYA DITUTUP PAKAI INI DULU, BRO --}}
-                                </select> {{-- <--- BARU TAG SELECT-NYA DITUTUP --}}
+                                    @endforeach {{-- 🔑 FIXED: Penutupan foreach dipindah ke posisi yang benar --}}
+                                </select> 
                             </div>
 
                             <div class="col-md-3 mb-2">
@@ -82,7 +83,7 @@
                         </div>
 
                         <div class="mt-3">
-                            <button type="submit" class="btn btn-success btn-sm btn-block">
+                            <button type="submit" class="btn btn-success btn-sm btn-block shadow-sm">
                                 <i class="fas fa-print fa-sm"></i> Buka Halaman Cetak Laporan
                             </button>
                         </div>
@@ -91,6 +92,7 @@
             </div>
         </div>
 
+        {{-- SEKTOR 2: LAPORAN MAINTENANCE ASET --}}
         <div class="col-xl-6 col-md-12 mb-4">
             <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
@@ -132,7 +134,7 @@
                         </div>
 
                         <div class="mt-4">
-                            <button type="submit" class="btn btn-warning btn-sm btn-block text-white font-weight-bold">
+                            <button type="submit" class="btn btn-warning btn-sm btn-block text-white font-weight-bold shadow-sm">
                                 <i class="fas fa-print fa-sm"></i> Buka Halaman Cetak Maintenance
                             </button>
                         </div>
@@ -141,7 +143,8 @@
             </div>
         </div>
 
-        <div class="col-xl-12 col-md-12 mb-4">
+        {{-- SEKTOR 3: LAPORAN MUTASI / PERPINDAHAN ASET --}}
+        <div class="col-xl-6 col-md-12 mb-4">
             <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center mb-3">
@@ -183,7 +186,7 @@
                         </div>
 
                         <div class="mt-3">
-                            <button type="submit" class="btn btn-info btn-sm btn-block font-weight-bold">
+                            <button type="submit" class="btn btn-info btn-sm btn-block font-weight-bold shadow-sm">
                                 <i class="fas fa-print fa-sm"></i> Buka Halaman Cetak Jurnal Mutasi
                             </button>
                         </div>
@@ -191,7 +194,130 @@
                 </div>
             </div>
         </div>
-    </div>
 
+        {{-- 🔑 CARD 4: LAPORAN JURNAL PENYUSUTAN & PEREMAJAAN ASET --}}
+        <div class="col-xl-6 col-md-12 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Financial Depreciation & Recovery
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">Laporan Penyusutan & Peremajaan</div>
+                            <small class="text-muted">Mencetak rekapitulasi beban penyusutan tahunan serta log usulan peremajaan fisik nilai buku aset.</small>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <hr>
+                    <form action="{{ route('reports.penyusutan.print') }}" method="GET" target="_blank">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Jenis Tindakan</label>
+                                <select name="tindakan" class="form-control form-control-sm">
+                                    <option value="">-- Semua Tindakan --</option>
+                                    <option value="murni_susut">Penyusutan Otomatis Tahunan</option>
+                                    <option value="peremajaan">Kebijakan Peremajaan Fisik</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Status Keputusan</label>
+                                <select name="status" class="form-control form-control-sm">
+                                    <option value="">-- Semua Status --</option>
+                                    <option value="menunggu">Menunggu Approval</option>
+                                    <option value="disetujui">Disetujui (Selesai)</option>
+                                    <option value="ditolak">Ditolak Pimpinan</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Ruangan / Lokasi</label>
+                                <select name="id_lokasi" class="form-control form-control-sm">
+                                    <option value="">-- Semua Ruangan --</option>
+                                    @foreach($lokasis as $l)
+                                        <option value="{{ $l->id_lokasi }}">{{ $l->nama_lokasi }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- ⚡ NEW FILTER: JENIS ASET UNTUK DEPRESIASI --}}
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Jenis / Golongan Aset</label>
+                                <select name="id_jenis" class="form-control form-control-sm">
+                                    <option value="">-- Semua Jenis Aset --</option>
+                                    @foreach($jenises as $j)
+                                        <option value="{{ $j->id_jenis }}">{{ $j->nama_jenis ?? $j->nama }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-danger btn-sm btn-block font-weight-bold shadow-sm">
+                                <i class="fas fa-print fa-sm"></i> Buka Halaman Cetak Penyusutan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- 🔑 CARD 5: LAPORAN JURNAL PENGHAPUSAN / PEMUSNAHAN ASET --}}
+        <div class="col-xl-6 col-md-12 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center mb-3">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
+                                Asset Write-Off & Disposal Control
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">Laporan Penghapusan Aset</div>
+                            <small class="text-muted">Mencetak rekapitulasi data aset rusak total atau hilang yang telah resmi diajukan pemusnahan dokumennya.</small>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-trash-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                    <hr>
+                    <form action="{{ route('reports.penghapusan.print') }}" method="GET" target="_blank">
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Status Keputusan</label>
+                                <select name="status" class="form-control form-control-sm">
+                                    <option value="">-- Semua Status --</option>
+                                    <option value="menunggu">Menunggu Approval</option>
+                                    <option value="disetujui">Disetujui (Selesai)</option>
+                                    <option value="ditolak">Ditolak Pimpinan</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Lokasi Kejadian</label>
+                                <select name="id_lokasi" class="form-control form-control-sm">
+                                    <option value="">-- Semua Lokasi --</option>
+                                    @foreach($lokasis as $l)
+                                        <option value="{{ $l->id_lokasi }}">{{ $l->nama_lokasi }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- ⚡ NEW FILTER: JENIS ASET UNTUK DISPOSAL --}}
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label font-weight-bold text-xs">Filter Jenis Aset</label>
+                                <select name="id_jenis" class="form-control form-control-sm">
+                                    <option value="">-- Semua Jenis --</option>
+                                    @foreach($jenises as $j)
+                                        <option value="{{ $j->id_jenis }}">{{ $j->nama_jenis ?? $j->nama }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-dark btn-sm btn-block font-weight-bold shadow-sm">
+                                <i class="fas fa-print fa-sm"></i> Buka Halaman Cetak Penghapusan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection

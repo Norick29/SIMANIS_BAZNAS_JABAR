@@ -85,6 +85,7 @@
                         <a class="collapse-item" href="{{ route('amil.index') }}">Data Amil</a>
                         <a class="collapse-item" href="{{ route('divisi.index') }}">Data Divisi</a>
                         <a class="collapse-item" href="{{ route('jabatan.index') }}">Data Jabatan</a>
+                        <a class="collapse-item" href="{{ route('master-penyusutan.index') }}">Data Penyusutan</a>
                         <hr class="my-1">
                     @endif
 
@@ -110,6 +111,9 @@
                     <a class="collapse-item" href="{{ route('assets.index') }}">Data Asset</a>
                     <a class="collapse-item" href="{{ route('maintenances.index') }}">Maintenance</a>
                     <a class="collapse-item" href="{{ route('riwayat.pindah') }}">Riwayat Pindah</a>
+                    <a class="collapse-item" href="{{ route('hilang.index') }}">Aset Hilang</a>
+                    <a class="collapse-item" href="{{ route('penyusutan.index') }}">Penyusutan Aset</a>
+                    <a class="collapse-item" href="{{ route('penghapusan.index') }}">Penghapusan Aset</a>
                 </div>
             </div>
         </li>

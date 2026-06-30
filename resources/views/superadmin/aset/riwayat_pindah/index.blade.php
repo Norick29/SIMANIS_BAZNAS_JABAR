@@ -136,7 +136,7 @@
                                 </td>
                                 <td>
                                     <small>
-                                        <strong>Lokasi:</strong> {{ $item->asset->lokasi->nama_lokasi ?? '-' }}<br>
+                                        <strong>Lokasi:</strong> {{ $item->lokasiLama->nama_lokasi ?? '-' }}<br>
                                         <strong>PJ:</strong> {{ $item->amilSebelum->nama ?? '-' }}
                                     </small>
                                 </td>
@@ -232,7 +232,7 @@
                         </tr>
                         <tr>
                             <th>Lokasi Sebelum</th>
-                            <td>{{ $item->asset->lokasi->nama_lokasi ?? '-' }}</td>
+                            <td>{{ $item->lokasiLama->nama_lokasi ?? '-' }}</td>
                         </tr>
                         <tr>
                             <th>Lokasi Sesudah</th>

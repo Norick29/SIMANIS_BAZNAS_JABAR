@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Models\PindahAset;
 use App\Models\Signature;
+use App\Models\PenyusutanAset;
 use Barryvdh\DomPDF\Facade\Pdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Crypt;
@@ -29,69 +30,104 @@ class ApprovalController extends Controller
      * LIST APPROVAL
      */
     public function index()
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
+    $query = Approval::with([
+        'requestedBy',
 
-        $query = Approval::with([
-            'pindahAset.asset.barang',
-            'pindahAset.asset.lokasi',
-            'pindahAset.amilSebelum',
-            'pindahAset.amilSesudah',
-            'pindahAset.lokasiBaru',
-            'requestedBy'
-        ])
-        ->where('status', 'menunggu');
+        // ==========================
+        // MUTASI
+        // ==========================
+        'pindahAset.asset.barang',
+        'pindahAset.asset.lokasi',
+        'pindahAset.amilSebelum',
+        'pindahAset.amilSesudah',
+        'pindahAset.lokasiBaru',
 
-        // FILTER BERDASARKAN ROLE
-        if ($user->role === 'kadept') {
+        // ==========================
+        // POLYMORPHIC
+        // ==========================
+        'reference',
+        'reference.asset',
+        'reference.asset.barang',
+        'reference.asset.lokasi',
+        'reference.asset.amil',
+    ])
+    ->where('status','menunggu');
 
-            $query->where('stage', 1);
+    // ==========================
+    // FILTER BERDASARKAN ROLE
+    // ==========================
 
-        } elseif ($user->role === 'kadiv') {
-
-            $query->where('stage', 2);
-
-        }
-
-        // SUPER ADMIN LIHAT SEMUA
-
-        $approvals = $query
-            ->latest()
-            ->get();
-
-        return view('superadmin.approval.index', compact('approvals'));
+    if($user->role == 'kadept'){
+        $query->where('stage',1);
     }
+    elseif($user->role == 'kadiv'){
+        $query->where('stage',2);
+    }
+    $approvals = $query
+        ->latest()
+        ->get();
+
+    return view(
+        'superadmin.approval.index',
+        compact('approvals')
+    );
+}
 
     /**
      * DETAIL APPROVAL
      */
     public function show($id)
-    {
-        $approval = Approval::with([
-            'pindahAset.asset.barang',
-            'pindahAset.asset.lokasi',
-            'pindahAset.amilSebelum',
-            'pindahAset.amilSesudah',
-            'pindahAset.lokasiBaru',
-            'requestedBy',
-            'pindahAset.approvals'
-        ])->findOrFail($id);
+{
+    $user = Auth::user();
+    $approval = Approval::with([
 
-        $user = Auth::user();
+        'requestedBy',
 
-        // VALIDASI HAK APPROVAL
-        if (
-            ($approval->stage == 1 && $user->role != 'kadept') &&
-            ($approval->stage == 2 && $user->role != 'kadiv') &&
-            ($user->role != 'super admin')
-        ) {
-            return redirect()
-                ->route('approvals.index')
-                ->with('error', 'Anda tidak memiliki akses');
-        }
+        // ==========================
+        // MUTASI
+        // ==========================
 
-        return view('superadmin.approval.show', compact('approval'));
+        'pindahAset.asset.barang',
+        'pindahAset.asset.lokasi',
+        'pindahAset.amilSebelum',
+        'pindahAset.amilSesudah',
+        'pindahAset.lokasiBaru',
+        'pindahAset.approvals.approvedBy',
+
+        // ==========================
+        // POLYMORPHIC
+        // ==========================
+
+        'reference',
+        'reference.asset',
+        'reference.asset.barang',
+        'reference.asset.lokasi',
+        'reference.asset.amil',
+        'reference.requestedBy'
+
+    ])->findOrFail($id);
+
+    // ===================================
+    // VALIDASI ROLE
+    // ===================================
+
+    if(($approval->stage == 1 && $user->role != 'kadept') && ($approval->stage == 2 && $user->role != 'kadiv') && ($user->role != 'super admin')){
+
+        return redirect()
+            ->route('approvals.index')
+            ->with(
+                'error',
+                'Anda tidak memiliki akses.'
+            );
     }
+
+    return view(
+        'superadmin.approval.show',
+        compact('approval')
+    );
+}
 
     public function approve(Request $request, $id)
 {
@@ -109,7 +145,8 @@ class ApprovalController extends Controller
         'requested_by' => null,
         'id_pindah' => null,
         'kode_aset_lama' => null,
-        'kode_aset_baru' => null
+        'kode_aset_baru' => null,
+        'jenis_aksi'       => null,
     ];
 
     DB::beginTransaction();
@@ -132,6 +169,7 @@ class ApprovalController extends Controller
             'approved_at' => now(),
         ]);
 
+    if ($approval->approval_type === null || $approval->approval_type === \App\Models\PindahAset::class) {
         $pindah = $approval->pindahAset;
         if (!$pindah) {
             throw new \Exception('Data perpindahan aset tidak ditemukan.');
@@ -142,6 +180,7 @@ class ApprovalController extends Controller
         $dataNotif['requested_by'] = $pindah->requested_by;
         $dataNotif['id_pindah'] = $pindah->id_pindah;
         $dataNotif['kode_aset_lama'] = $pindah->asset->kode_aset ?? '-';
+        $dataNotif['jenis_aksi'] = 'pindah';
 
         // 3. GENERATE DIGITAL SIGNATURE
         $digitalSignature = $this->generateDigitalSignature($pindah);
@@ -254,6 +293,89 @@ class ApprovalController extends Controller
                 'status' => 'disetujui'
             ]);
         }
+    // =========================================================================
+        // 🔀 PERCABANGAN JALUR 2: LIFECYCLE AUDIT (PEREMAJAAN / PENGHAPUSAN)
+        // =========================================================================
+        } elseif ($approval->approval_type === \App\Models\PenyusutanAset::class || $approval->approval_type === \App\Models\PenghapusanAset::class) {
+            
+            $penyusutan = null;
+    
+            if ($approval->approval_type === \App\Models\PenyusutanAset::class) {
+                // Jika tipenya penyusutan (Peremajaan)
+                $penyusutan = \App\Models\PenyusutanAset::with('asset.barang')->findOrFail($approval->reference_id);
+            } else {
+                // Jika tipenya penghapusan
+                $penyusutan = \App\Models\PenghapusanAset::with('asset.barang')->findOrFail($approval->reference_id);
+            }
+            
+            // ⚡ PERBAIKAN UTAMA: Identifikasi aksi langsung dari properti note milik data approval yang sedang diproses saat ini!
+            $noteLower = strtolower($approval->note ?? '');
+            $isPeremajaan = \Illuminate\Support\Str::contains($noteLower, 'peremajaan');
+            $jenisAksi = $isPeremajaan ? 'peremajaan' : 'penghapusan';
+
+            $dataNotif['stage'] = $stageSebelumnya;
+            $dataNotif['requested_by'] = $penyusutan->requested_by;
+            $dataNotif['kode_aset_lama'] = $penyusutan->asset->kode_aset ?? '-';
+            $dataNotif['jenis_aksi'] = $jenisAksi;
+
+            if ($stageSebelumnya == 1) {
+                // ⚡ PERBAIKAN CRITICAL: Salin dan teruskan nilai 'note' dari Stage 1 ke rekor Stage 2 milik Kadiv
+                Approval::create([
+                    'approval_type' => $approval->approval_type,
+                    'reference_id'  => $approval->reference_id,
+                    'stage'         => 2,
+                    'status'        => 'menunggu',
+                    'requested_by'  => $penyusutan->requested_by,
+                    'note'          => $approval->note // 🔑 Kunci identitas aksi ada di sini, bro!
+                ]);
+            }
+
+            if ($stageSebelumnya == 2) {
+                $aset = $penyusutan->asset;
+                if (!$aset) {
+                    throw new \Exception('Data aset tidak ditemukan.');
+                }
+
+                if ($isPeremajaan) {
+                    // 🔄 EKSEKUSI FINAL PEREMAJAAN
+                    $aset->update([
+                        'kondisi' => 'baik'
+                    ]);
+                    $penyusutan->update([
+                        'status' => 'disetujui'
+                    ]);
+                }else {
+
+                // ==========================================================
+                // REVISI
+                // FINAL APPROVAL PENGHAPUSAN
+                // ==========================================================
+
+                // Simpan histori penghapusan
+                $penyusutan->update([
+                        'alasan' => str_replace('USULAN PENGHAPUSAN: ', '', $approval->note),
+                        'status' => 'disetujui'
+                    ]);
+
+                \App\Models\PenyusutanAset::where('id_aset', $aset->id_aset)
+                    ->where('status', 'menunggu')
+                    ->update([
+                        'status' => 'disetujui'
+                    ]);
+                // Update status aset
+                $aset->update([
+                    'status' => 'nonaktif'
+                ]);
+                // Arsipkan aset
+                $aset->delete();
+            }
+
+                // Perbarui status induk log penyusutan menjadi selesai
+                $penyusutan->update([
+                    'status' => 'disetujui'
+                ]);
+            }
+        }
 
         // COMMIT SEKARANG: mysql akan memaksa data kesimpan permanen
         DB::commit();
@@ -266,49 +388,71 @@ class ApprovalController extends Controller
     // 🔑 PROSES KIRIM EMAIL DI LUAR LINGKUP TRANSACTION
     try {
         $pengaju = User::find($dataNotif['requested_by']);
-
+        
         if ($dataNotif['stage'] == 1) {
-            // 1. Notif ke Staf
             if ($pengaju) {
+                $titleText = $dataNotif['jenis_aksi'] == 'pindah' ? 'Mutasi Disetujui Kadept (Stage 1)' : 'Usulan '.ucfirst($dataNotif['jenis_aksi']).' Disetujui Kadept';
+                $msgText = $dataNotif['jenis_aksi'] == 'pindah' 
+                    ? "Pengajuan mutasi aset dengan kode {$dataNotif['kode_aset_lama']} telah disetujui Kepala Departemen dan diteruskan ke Kepala Divisi."
+                    : "Usulan {$dataNotif['jenis_aksi']} aset dengan kode {$dataNotif['kode_aset_lama']} disetujui Kepala Departemen & diteruskan ke Kepala Divisi.";
+
                 $pengaju->notify(new AssetMutationNotification([
                     'id_pindah' => $dataNotif['id_pindah'],
-                    'title'     => 'Mutasi Disetujui Kadept (Stage 1)',
-                    'message'   => "Pengajuan mutasi aset dengan kode {$dataNotif['kode_aset_lama']} telah disetujui Kepala Departemen dan diteruskan ke Kepala Divisi.",
+                    'title'     => $titleText,
+                    'message'   => $msgText,
                     'icon'      => 'fas fa-check-circle',
                     'bg_color'  => 'bg-success',
-                    'url'       => url('/approvals') 
-                ]));
+                    'url'       => url('/approvals')
+                ])); 
             }
 
-            // 2. Notif ke Seluruh Kadiv
-            $kadivUsers = User::where('role', 'kadiv')->get();
+            $kadivUsers = User::where('role', 'kadiv')->get(); 
             foreach ($kadivUsers as $kadiv) {
+                $msgKadiv = $dataNotif['jenis_aksi'] == 'pindah'
+                    ? "Mutasi aset dengan kode {$dataNotif['kode_aset_lama']} menunggu persetujuan Anda."
+                    : "Usulan {$dataNotif['jenis_aksi']} aset dengan kode {$dataNotif['kode_aset_lama']} membutuhkan validasi Anda."; 
+
                 $kadiv->notify(new AssetMutationNotification([
                     'id_pindah' => $dataNotif['id_pindah'],
                     'title'     => 'Permintaan Approval Stage 2',
-                    'message'   => "Mutasi aset dengan kode {$dataNotif['kode_aset_lama']} menunggu persetujuan Anda.",
+                    'message'   => $msgKadiv,
                     'icon'      => 'fas fa-user-shield',
                     'bg_color'  => 'bg-primary',
                     'url'       => url('/approvals')
-                ]));
+                ])); 
             }
         }
 
         if ($dataNotif['stage'] == 2) {
             if ($pengaju) {
-                $kodeFinal = $dataNotif['kode_aset_baru'] ?? $dataNotif['kode_aset_lama'];
+                $kodeFinal = $dataNotif['kode_aset_baru'] ?? $dataNotif['kode_aset_lama']; 
+                
+                if($dataNotif['jenis_aksi'] == 'pindah') {
+                    $titleFinal = 'Mutasi Aset Disetujui Penuh (Final)';
+                    $msgFinal = "Selamat, pengajuan mutasi aset untuk kode {$kodeFinal} telah disetujui oleh Kepala Divisi. Kode aset dan QR Code baru telah diperbarui."; 
+                    $urlFinal = url('/riwayat-pindah-aset'); 
+                } elseif($dataNotif['jenis_aksi'] == 'peremajaan') {
+                    $titleFinal = 'Peremajaan Aset Disetujui (Final)';
+                    $msgFinal = "Selamat, usulan peremajaan aset dengan kode {$kodeFinal} disetujui Kepala Divisi. Umur ekonomis aset berhasil diperpanjang +5 tahun.";
+                    $urlFinal = url('/aset-penyusutan');
+                } else {
+                    $titleFinal = 'Penghapusan Aset Disetujui (Final)';
+                    $msgFinal = "Selamat, pengajuan pemusnahan aset dengan kode {$kodeFinal} disetujui Kepala Divisi. Data telah diarsipkan ke riwayat log penghapusan.";
+                    $urlFinal = url('/aset-penyusutan');
+                }
+
                 $pengaju->notify(new AssetMutationNotification([
                     'id_pindah' => $dataNotif['id_pindah'],
-                    'title'     => 'Mutasi Aset Disetujui Penuh (Final)',
-                    'message'   => "Selamat, pengajuan mutasi aset untuk kode {$kodeFinal} telah disetujui oleh Kepala Divisi. Kode aset dan QR Code baru telah diperbarui.",
+                    'title'     => $titleFinal,
+                    'message'   => $msgFinal,
                     'icon'      => 'fas fa-boxes',
                     'bg_color'  => 'bg-success',
-                    'url'       => url('/riwayat-pindah-aset')
-                ]));
+                    'url'       => $urlFinal
+                ])); 
             }
         }
-    } catch (\Exception $eMail) {
-        // Abaikan limitasi mailtrap agar UI web tetap berhasil
+    } catch (\Exception $eMail) { 
+        // Abaikan limitasi mailtrap [cite: 2382]
     }
 
     return redirect()
@@ -323,6 +467,7 @@ class ApprovalController extends Controller
             'asset.lokasi',
             'amilSebelum',
             'amilSesudah',
+            'lokasiLama',
             'lokasiBaru',
             'requestedBy'
         ]);
@@ -401,6 +546,7 @@ class ApprovalController extends Controller
             'amilSebelum',
             'amilSesudah',
             'lokasiBaru',
+            'lokasiLama',
             'approvals.approvedBy',
             'requestedBy'
         ])->findOrFail($id);
@@ -419,6 +565,7 @@ class ApprovalController extends Controller
         'amilSebelum',
         'amilSesudah',
         'lokasiBaru',
+        'lokasiLama',
         'approvals.approvedBy'
     ])->findOrFail($id);
 
@@ -480,7 +627,7 @@ private function generateDigitalSignature($pindah)
     $data = json_encode([
         'id_pindah'   => $pindah->id_pindah ?? null,
         'kode_aset'   => $pindah->asset?->kode_aset ?? 'N/A',
-        'lokasi_lama' => $pindah->asset?->lokasi?->nama_lokasi ?? 'N/A',
+        'lokasi_lama' => $pindah->lokasiLama?->nama_lokasi ?? 'N/A',
         'lokasi_baru' => $pindah->lokasiBaru?->nama_lokasi ?? 'N/A',
         'approved_by' => $user->name,
         'approved_at' => now()->toDateTimeString(),
@@ -565,33 +712,92 @@ public function reject(Request $request, $id)
     ]);
 
     try {
-        // 2. Cari data approval berdasarkan id_approval yang dilempar dari rute
-        $approval = Approval::with('pindahAset')->findOrFail($id);
+        $approval = Approval::findOrFail($id);
 
         // Jaring pengaman: jika statusnya sudah bukan 'pending', jangan izinkan diubah lagi
         if ($approval->status !== 'menunggu') {
             return redirect()->back()->with('error', 'Permintaan ini sudah diproses sebelumnya, bro.');
         }
 
-        // 3. Verifikasi keamanan Password Pimpinan (Digital Signature Auth)
+        // Verifikasi keamanan Password Pimpinan (Digital Signature Auth)
         $user = Auth::user();
         if (!Hash::check($request->password, $user->password)) {
             return redirect()->back()->with('error', 'Gagal memproses penolakan. Password konfirmasi Anda salah!');
         }
 
-        // 4. Update data approval menjadi 'rejected'
+        $originalNote = $approval->note ?? '';
+        $isPeremajaan = \Illuminate\Support\Str::contains(strtolower($originalNote), 'peremajaan');
+        $isPenghapusan = $approval->approval_type === \App\Models\PenghapusanAset::class
+            || \Illuminate\Support\Str::contains(strtolower($originalNote), 'penghapusan');
+
+        // 🔑 1. DEFINISIKAN VARIABEL DEFAULT DI SINI AGAR BEBAS UNDEFINED
+        $kodeAsetInfo = '-';
+        $requestedBy = null;
+        $msgNotif = "Pengajuan ditolak oleh pimpinan.";
+        $urlNotif = url('/dashboard');
+
+        // Update data approval menjadi 'ditolak'
         $approval->update([
             'status'      => 'ditolak',
-            'approved_by' => $user->id_user,       // Mencatat siapa pimpinan yang menolak
-            'approved_at' => now(),                // Waktu penolakan (digital timestamp)
-            'note'  => $request->alasan,     // Menyimpan alasan kenapa ditolak (pastikan kolom ini ada di DB, atau sesuaikan namanya)
+            'approved_by' => $user->id_user,
+            'approved_at' => now(),
+            'note'        => $request->alasan,
         ]);
 
-        // 5. Update juga status di tabel induknya (pindah_asets) agar ikut sinkron menjadi 'rejected'
-        if ($approval->pindahAset) {
-            $approval->pindahAset->update([
-                'status' => 'ditolak'
-            ]);
+        if ($approval->approval_type === null || $approval->approval_type === \App\Models\PindahAset::class) {
+            
+            // --- JALUR INDUK PINDAH ASET ---
+            if ($approval->pindahAset) {
+                $approval->pindahAset->update([
+                    'status' => 'ditolak'
+                ]);
+            }
+            $pindah = $approval->pindahAset;
+            if ($pindah) {
+                $requestedBy = $pindah->requested_by;
+                $kodeAsetInfo = $pindah->asset->kode_aset ?? '-';
+            }
+            $msgNotif = "Pengajuan mutasi aset dengan kode {$kodeAsetInfo} ditolak. Alasan: \"{$request->alasan}\"";
+            $urlNotif = url('/riwayat-pindah-aset'); 
+
+        } elseif ($approval->approval_type === \App\Models\PenyusutanAset::class) {
+            
+            // --- JALUR INDUK AUDIT LIFECYCLE PENYUSUTAN ---
+            if ($isPeremajaan) {
+                // Jalur A: Jika yang ditolak adalah Peremajaan
+                $penyusutan = \App\Models\PenyusutanAset::with('asset')->find($approval->reference_id);
+                if ($penyusutan) {
+                    $penyusutan->update([
+                        'status' => 'ditolak',
+                        'alasan' => 'DITOLAK PIMPINAN PEREMAJAAN: ' . $request->alasan
+                    ]);
+                    $requestedBy = $penyusutan->requested_by;
+                    $kodeAsetInfo = $penyusutan->asset->kode_aset ?? '-';
+                }
+                $msgNotif = "Pengajuan PEREMAJAAN untuk aset dengan kode {$kodeAsetInfo} ditolak pimpinan. Alasan: \"{$request->alasan}\"";
+            }
+
+            $urlNotif = url('/aset-penyusutan');
+        } elseif ($approval->approval_type === \App\Models\PenghapusanAset::class || $isPenghapusan) {
+            $penghapusan = \App\Models\PenghapusanAset::with('asset')->find($approval->reference_id);
+            if ($penghapusan) {
+                $penghapusan->update([
+                    'status' => 'ditolak',
+                    'alasan' => 'DITOLAK PIMPINAN PENGHAPUSAN: ' . $request->alasan
+                ]);
+                
+                \App\Models\PenyusutanAset::where('id_aset', $penghapusan->id_aset)
+                    ->where('status', 'menunggu')
+                    ->update([
+                        'status' => 'ditolak',
+                        'alasan' => 'DITOLAK PIMPINAN PENGHAPUSAN: ' . $request->alasan
+                    ]);
+
+                $requestedBy = $penghapusan->requested_by;
+                $kodeAsetInfo = $penghapusan->asset->kode_aset ?? '-';
+            }
+            $msgNotif = "Pengajuan PENGHAPUSAN untuk aset dengan kode {$kodeAsetInfo} ditolak pimpinan. Alasan: \"{$request->alasan}\"";
+            $urlNotif = url('/aset-penyusutan');
         }
 
         /**
@@ -599,29 +805,26 @@ public function reject(Request $request, $id)
          * 🔔 [NOTIFIKASI PENOLAKAN]: Beritahu Pengaju/Staf Bahwa Pengajuan Ditolak
          * =========================================================================
          */
-        $pindah = $approval->pindahAset;
-        $pengaju = User::find($pindah->requested_by);
-        
-        if ($pengaju) {
-            // Tentukan jabatan penolak berdasarkan level stage
-            $jabatanPenolak = ($approval->stage == 1) ? 'Kepala Departemen' : 'Kepala Divisi';
-
-            $pengaju->notify(new AssetMutationNotification([
-                'id_pindah' => $pindah->id_pindah,
-                'title'     => "Mutasi Ditolak oleh {$jabatanPenolak}",
-                'message'   => "Pengajuan mutasi aset dengan kode {$pindah->asset->kode_aset} ditolak. Alasan: \"{$request->alasan}\"",
-                'icon'      => 'fas fa-times-circle',
-                'bg_color'  => 'bg-danger', // Merah untuk penolakan
-                'url'       => url('/riwayat-pindah-aset')
-            ]));
+        if ($requestedBy) {
+            $pengaju = User::find($requestedBy);
+            if ($pengaju) {
+                $jabatanPenolak = ($approval->stage == 1) ? 'Kepala Departemen' : 'Kepala Divisi';
+                $pengaju->notify(new AssetMutationNotification([
+                    'id_pindah' => $approval->id_pindah, 
+                    'title'     => "Permintaan Ditolak oleh {$jabatanPenolak}",
+                    'message'   => $msgNotif,
+                    'icon'      => 'fas fa-times-circle',
+                    'bg_color'  => 'bg-danger',
+                    'url'       => $urlNotif
+                ]));
+            }
         }
 
-        // Sukses kembali ke halaman detail dengan alert hijau
+        // Sukses kembali ke halaman list approval
         return redirect()->route('approvals.index')
-            ->with('success', 'Permintaan perpindahan aset berhasil ditolak dan ditandatangani secara digital.');
+            ->with('success', 'Permintaan kebijakan aset berhasil ditolak dan ditandatangani secara digital.');
 
     } catch (\Exception $e) {
-        // Jika ada masalah sistem database/query, tangkap di sini biar gak crash halaman HTML-nya
         return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
     }
 }

@@ -39,6 +39,11 @@ class PindahAset extends Model
         return $this->belongsTo(Lokasi::class, 'id_lokasi_baru', 'id_lokasi');
     }
 
+    public function lokasiLama()
+    {
+        return $this->belongsTo(Lokasi::class, 'id_lokasi_lama', 'id_lokasi');
+    }
+
     public function approvals()
     {
         return $this->hasMany(Approval::class, 'id_pindah', 'id_pindah');

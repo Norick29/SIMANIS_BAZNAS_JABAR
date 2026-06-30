@@ -32,7 +32,7 @@
                     <tr><th>Satuan</th><td id="d_satuan"></td></tr>
                     <tr><th>Kondisi</th><td id="d_kondisi"></td></tr>
                     <tr><th>Status</th><td id="d_status"></td></tr>
-                    <tr><th>Harga</th><td id="d_harga"></td></tr>
+                    <tr><th>Harga</th><td id="d_harga">Rp -</td></tr>
                     <tr><th>Total Harga</th><td id="d_total"></td></tr>
                     <tr><th>Kategori</th><td id="d_kategori"></td></tr>
                     <tr><th>Jenis</th><td id="d_jenis"></td></tr>
