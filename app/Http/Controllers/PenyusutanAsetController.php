@@ -220,6 +220,10 @@ foreach ($assetsAktif as $aset) {
 
     public function ajukanPeremajaan(Request $request, $id_penyusutan)
     {
+        if (in_array(Auth::user()->role, ['kadept', 'kadiv'])) {
+            return redirect()->back()->with('error', 'Kepala departemen dan kepala divisi hanya dapat melakukan monitoring penyusutan.');
+        }
+
         // 1. Validasi mengambil input name 'alasan'
         $request->validate([
             'alasan' => 'required|string|max:1000'
@@ -259,6 +263,10 @@ foreach ($assetsAktif as $aset) {
 
     public function ajukanPenghapusan(Request $request, $id_penyusutan)
     {
+        if (in_array(Auth::user()->role, ['kadept', 'kadiv'])) {
+            return redirect()->back()->with('error', 'Kepala departemen dan kepala divisi hanya dapat melakukan monitoring penyusutan.');
+        }
+
         $request->validate([
             'alasan' => 'required|string|max:1000'
         ]);
@@ -444,8 +452,24 @@ foreach ($assetsAktif as $aset) {
     $manifestKadiv = "BAZNAS JABAR | Jenis: Laporan Penyusutan & Peremajaan | Oleh Kadiv: {$kepalaDivisi} | Waktu: {$timestamp} | Nilai Awal: Rp " . number_format($totalHargaPerolehan, 0, ',', '.');
     $sigKadiv = base64_encode(hash_hmac('sha256', $manifestKadiv, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
 
-    $qrDataKadept = "VERIFIED_KADEPT\nDoc: Laporan Penyusutan & Peremajaan\nKey Fingerprint: KEY-{$fingerprintKadept}\nSignature: " . substr($sigKadept, 0, 25) . "...";
-    $qrDataKadiv  = "VERIFIED_KADIV\nDoc: Laporan Penyusutan & Peremajaan\nKey Fingerprint: KEY-{$fingerprintKadiv}\nSignature: " . substr($sigKadiv, 0, 25) . "...";
+    $qrDataKadept = URL::signedRoute('reports.verify', [
+        'document' => 'Laporan Penyusutan & Peremajaan',
+        'role' => 'Kepala Departemen',
+        'signer' => $kepalaDept,
+        'printed_by' => $printedBy,
+        'printed_at' => $timestamp,
+        'fingerprint' => 'KEY-' . $fingerprintKadept,
+        'signature' => substr($sigKadept, 0, 25) . '...',
+    ]);
+    $qrDataKadiv  = URL::signedRoute('reports.verify', [
+        'document' => 'Laporan Penyusutan & Peremajaan',
+        'role' => 'Kepala Divisi',
+        'signer' => $kepalaDivisi,
+        'printed_by' => $printedBy,
+        'printed_at' => $timestamp,
+        'fingerprint' => 'KEY-' . $fingerprintKadiv,
+        'signature' => substr($sigKadiv, 0, 25) . '...',
+    ]);
 
     // Log Tracker Audit Stamp bagian tengah
     $qrCodeSystem = "SIMASET AUDIT STAMP | Operator Cetak: {$printedBy} ({$role}) | Waktu: {$timestamp} | Status Data: Valid.";

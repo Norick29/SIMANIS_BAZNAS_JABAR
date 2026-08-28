@@ -22,6 +22,7 @@ use App\Models\Asset; // Import model Asset
 use Carbon\Carbon;
 use App\Models\User;
 use App\Notifications\AssetMutationNotification;
+use App\Services\RSAService;
 
 
 class ApprovalController extends Controller
@@ -206,6 +207,7 @@ class ApprovalController extends Controller
                 'id_pindah' => $pindah->id_pindah,
                 'stage' => 2,
                 'status' => 'menunggu',
+                'requested_by' => $pindah->requested_by,
                 'approved_by' => null,
                 'approved_at' => null,
             ]);
@@ -299,7 +301,7 @@ class ApprovalController extends Controller
         } elseif ($approval->approval_type === \App\Models\PenyusutanAset::class || $approval->approval_type === \App\Models\PenghapusanAset::class) {
             
             $penyusutan = null;
-    
+
             if ($approval->approval_type === \App\Models\PenyusutanAset::class) {
                 // Jika tipenya penyusutan (Peremajaan)
                 $penyusutan = \App\Models\PenyusutanAset::with('asset.barang')->findOrFail($approval->reference_id);
@@ -388,7 +390,7 @@ class ApprovalController extends Controller
     // 🔑 PROSES KIRIM EMAIL DI LUAR LINGKUP TRANSACTION
     try {
         $pengaju = User::find($dataNotif['requested_by']);
-        
+
         if ($dataNotif['stage'] == 1) {
             if ($pengaju) {
                 $titleText = $dataNotif['jenis_aksi'] == 'pindah' ? 'Mutasi Disetujui Kadept (Stage 1)' : 'Usulan '.ucfirst($dataNotif['jenis_aksi']).' Disetujui Kadept';
@@ -528,7 +530,7 @@ class ApprovalController extends Controller
 
         $minYear = PindahAset::min('created_at') ? Carbon::parse(PindahAset::min('created_at'))->year : now()->year;
         $yearsList = range($minYear, now()->year + 1);
-        
+
         // Ambil data semua lokasi untuk dropdown filter
         $lokasis = Lokasi::orderBy('nama_lokasi')->get();
 
@@ -633,38 +635,48 @@ private function generateDigitalSignature($pindah)
         'approved_at' => now()->toDateTimeString(),
     ]);
 
+    if (empty($user->private_key) || empty($user->public_key)) {
+        $this->regenerateUserKeyPair($user);
+    }
+
     // 2. Dekripsi Private Key
     try {
-        $decryptedPrivateKey = Crypt::decryptString($user->private_key);
-        
-        // --- FIX MASALAH 1: Jika string ternyata ter-serialisasi, kita unserialize ---
-        if (preg_match('/^s:\d+:"/', $decryptedPrivateKey) || @unserialize($decryptedPrivateKey) !== false) {
-            // Jika strukturnya mentah seperti dump (ada teks s:1704), kita bersihkan manual dengan regex
-            $decryptedPrivateKey = preg_replace('/^s:\d+:"|";$/', '', $decryptedPrivateKey);
-        }
+        $decryptedPrivateKey = $this->decryptUserPrivateKey($user->private_key);
     } catch (\Exception $e) {
-        throw new \Exception('Gagal melakukan dekripsi Private Key user.');
+        $this->regenerateUserKeyPair($user);
+        $decryptedPrivateKey = $this->decryptUserPrivateKey($user->private_key);
     }
 
     // --- FIX MASALAH 2: Rekonstruksi Format PEM OpenSSL (Baris Baru) ---
     // Bersihkan dulu dari spasi atau karakter aneh
     $cleanKey = trim($decryptedPrivateKey);
+
+    $privateKey = openssl_pkey_get_private($cleanKey);
+    if (!$privateKey) {
+        $this->clearOpenSslErrors();
+    }
     
     // Ekstrak isi core key (ambil teks di antara BEGIN dan END)
-    $searchBegin = "-----BEGIN PRIVATE KEY-----";
-    $searchEnd   = "-----END PRIVATE KEY-----";
+    $searchBegin = str_contains($cleanKey, 'BEGIN RSA PRIVATE KEY')
+        ? "-----BEGIN RSA PRIVATE KEY-----"
+        : "-----BEGIN PRIVATE KEY-----";
+    $searchEnd = str_contains($cleanKey, 'END RSA PRIVATE KEY')
+        ? "-----END RSA PRIVATE KEY-----"
+        : "-----END PRIVATE KEY-----";
     
-    // Jika formatnya menyatu tanpa baris baru, kita pisahkan core-nya
-    $coreKey = str_replace([$searchBegin, $searchEnd, "\n", "\r", " "], "", $cleanKey);
-    
-    // Potong core key per 64 karakter sesuai standar RFC 7468 (PEM format)
-    $chunkedCoreKey = chunk_split($coreKey, 64, "\n");
-    
-    // Gabungkan kembali menjadi format privat key yang disukai OpenSSL PHP
-    $formattedPrivateKey = $searchBegin . "\n" . $chunkedCoreKey . $searchEnd;
+    if (!$privateKey) {
+        // Jika formatnya menyatu tanpa baris baru, kita pisahkan core-nya
+        $coreKey = str_replace([$searchBegin, $searchEnd, "\n", "\r", " "], "", $cleanKey);
 
-    // 3. Load ke OpenSSL
-    $privateKey = openssl_pkey_get_private($formattedPrivateKey);
+        // Potong core key per 64 karakter sesuai standar RFC 7468 (PEM format)
+        $chunkedCoreKey = chunk_split($coreKey, 64, "\n");
+
+        // Gabungkan kembali menjadi format privat key yang disukai OpenSSL PHP
+        $formattedPrivateKey = $searchBegin . "\n" . $chunkedCoreKey . $searchEnd . "\n";
+
+        // 3. Load ke OpenSSL
+        $privateKey = openssl_pkey_get_private($formattedPrivateKey);
+    }
 
     if (!$privateKey) {
         // Jika masih gagal, kita muntahkan error internal OpenSSL agar jelas di layar
@@ -698,6 +710,47 @@ private function generateDigitalSignature($pindah)
         'signature'   => $base64Signature,
         'fingerprint' => sha1($user->public_key),
     ];
+}
+
+private function decryptUserPrivateKey($encryptedPrivateKey)
+{
+    try {
+        $decryptedPrivateKey = Crypt::decrypt($encryptedPrivateKey);
+    } catch (\Exception $e) {
+        $decryptedPrivateKey = Crypt::decryptString($encryptedPrivateKey);
+    }
+
+    if (is_string($decryptedPrivateKey)) {
+        $unserialized = @unserialize($decryptedPrivateKey);
+        if ($unserialized !== false || $decryptedPrivateKey === 'b:0;') {
+            $decryptedPrivateKey = $unserialized;
+        }
+    }
+
+    if (!is_string($decryptedPrivateKey) || trim($decryptedPrivateKey) === '') {
+        throw new \Exception('Private Key user kosong atau tidak valid.');
+    }
+
+    return $decryptedPrivateKey;
+}
+
+private function regenerateUserKeyPair(User $user)
+{
+    $keyPair = app(RSAService::class)->generateKeyPair();
+
+    $user->forceFill([
+        'public_key' => $keyPair['public_key'],
+        'private_key' => $keyPair['private_key'],
+    ])->save();
+
+    $user->refresh();
+}
+
+private function clearOpenSslErrors()
+{
+    while (openssl_error_string()) {
+        //
+    }
 }
 
 public function reject(Request $request, $id)

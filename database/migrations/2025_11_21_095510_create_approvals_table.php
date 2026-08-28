@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('approvals', function (Blueprint $table) {
             $table->id('id_approval');
             $table->unsignedBigInteger('id_pindah');
-            $table->string('resource_type', 50);
-            $table->unsignedBigInteger('resource_id');
+            $table->string('approval_type', 50)->nullable();
+            $table->bigInteger('reference_id')->unsigned()->nullable();
             $table->enum('status', ['menunggu', 'disetujui', 'ditolak'])->default('menunggu');
             $table->unsignedBigInteger('requested_by')->nullable();
             $table->unsignedBigInteger('approved_by')->nullable();
@@ -24,6 +24,7 @@ return new class extends Migration
             $table->text('note')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            
 
             $table->foreign('id_pindah')->references('id_pindah')->on('pindah_asets')->onUpdate('cascade')->onDelete('cascade');
             $table->foreign('requested_by')->references('id_user')->on('users')->onUpdate('cascade')->onDelete('set null');

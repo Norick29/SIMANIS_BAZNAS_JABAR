@@ -7,6 +7,7 @@ use App\Models\Maintenance;
 use App\Models\Asset;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 
 
 class MaintenanceController extends Controller
@@ -270,8 +271,24 @@ public function index(Request $request)
     $manifestKadiv = "BAZNAS JABAR | Jenis: Laporan Maintenance | Oleh Kadiv: {$kepalaDivisi} | Waktu: {$timestamp} | Total Biaya: Rp " . number_format($totalBiaya, 0, ',', '.');
     $sigKadiv = base64_encode(hash_hmac('sha256', $manifestKadiv, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
 
-    $qrDataKadept = "VERIFIED_KADEPT\nDoc: Laporan Perawatan Aset\nKey Fingerprint: KEY-{$fingerprintKadept}\nSignature: " . substr($sigKadept, 0, 25) . "...";
-    $qrDataKadiv  = "VERIFIED_KADIV\nDoc: Laporan Perawatan Aset\nKey Fingerprint: KEY-{$fingerprintKadiv}\nSignature: " . substr($sigKadiv, 0, 25) . "...";
+    $qrDataKadept = URL::signedRoute('reports.verify', [
+        'document' => 'Laporan Perawatan Aset',
+        'role' => 'Kepala Departemen',
+        'signer' => $kepalaDept,
+        'printed_by' => $printedBy,
+        'printed_at' => $timestamp,
+        'fingerprint' => 'KEY-' . $fingerprintKadept,
+        'signature' => substr($sigKadept, 0, 25) . '...',
+    ]);
+    $qrDataKadiv  = URL::signedRoute('reports.verify', [
+        'document' => 'Laporan Perawatan Aset',
+        'role' => 'Kepala Divisi',
+        'signer' => $kepalaDivisi,
+        'printed_by' => $printedBy,
+        'printed_at' => $timestamp,
+        'fingerprint' => 'KEY-' . $fingerprintKadiv,
+        'signature' => substr($sigKadiv, 0, 25) . '...',
+    ]);
 
     // Log Tracker Audit Tengah
     $qrCodeSystem = "SIMASET BAZNAS JABAR | Jenis: Laporan Riwayat Maintenance | Total Biaya: Rp " . number_format($totalBiaya, 0, ',', '.') . " | Generator: {$printedBy} ({$role}) | Waktu Cetak: {$timestamp} | Status Data: Sah Terverifikasi";

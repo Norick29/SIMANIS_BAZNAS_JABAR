@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mockup Awal SIMASET</title>
+  <link href="../public/sbadmin2/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="../public/sbadmin2/css/sb-admin-2.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f8f9fc;
+    }
+
+    .mock-shell {
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .mock-sidebar {
+      width: 245px;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #1cc88a 0%, #13855c 100%);
+      color: #fff;
+      flex: 0 0 245px;
+    }
+
+    .mock-brand {
+      height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      border-bottom: 1px solid rgba(255,255,255,.18);
+    }
+
+    .mock-brand img {
+      width: 48px;
+      height: auto;
+    }
+
+    .mock-nav-heading {
+      font-size: .66rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      opacity: .72;
+      padding: 1rem 1.25rem .35rem;
+    }
+
+    .mock-nav-link {
+      color: rgba(255,255,255,.86);
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .72rem 1.25rem;
+      font-size: .86rem;
+      text-decoration: none;
+    }
+
+    .mock-nav-link.active,
+    .mock-nav-link:hover {
+      color: #fff;
+      background: rgba(255,255,255,.14);
+      text-decoration: none;
+    }
+
+    .mock-submenu {
+      background: #fff;
+      color: #3a3b45;
+      margin: .25rem 1rem .75rem;
+      padding: .55rem 0;
+      border-radius: .35rem;
+      box-shadow: 0 .12rem .35rem rgba(58,59,69,.16);
+      font-size: .82rem;
+    }
+
+    .mock-submenu div {
+      padding: .42rem .9rem;
+    }
+
+    .mock-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mock-topbar {
+      height: 70px;
+      background: #fff;
+      box-shadow: 0 .15rem 1.1rem rgba(58,59,69,.12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+    }
+
+    .mock-search {
+      width: min(420px, 48vw);
+      display: flex;
+    }
+
+    .mock-search input {
+      border: 0;
+      background: #f8f9fc;
+      height: 38px;
+      border-radius: .35rem 0 0 .35rem;
+      padding: 0 .9rem;
+      width: 100%;
+      font-size: .85rem;
+    }
+
+    .mock-search button {
+      border: 0;
+      width: 44px;
+      background: #1cc88a;
+      color: #fff;
+      border-radius: 0 .35rem .35rem 0;
+    }
+
+    .mock-main {
+      padding: 1.5rem;
+    }
+
+    .mock-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .mock-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+    }
+
+    .mock-stat {
+      border-left: .25rem solid #1cc88a;
+    }
+
+    .mock-stat.primary {
+      border-left-color: #4e73df;
+    }
+
+    .mock-stat.warning {
+      border-left-color: #f6c23e;
+    }
+
+    .mock-stat.danger {
+      border-left-color: #e74a3b;
+    }
+
+    .mock-section-title {
+      color: #1cc88a;
+      font-weight: 800;
+      font-size: .95rem;
+      margin: 0;
+    }
+
+    .mock-filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: .75rem;
+    }
+
+    .mock-chart {
+      height: 260px;
+      display: flex;
+      align-items: end;
+      gap: .6rem;
+      padding-top: 1rem;
+    }
+
+    .mock-bar {
+      flex: 1;
+      min-width: 18px;
+      background: #1cc88a;
+      border-radius: .25rem .25rem 0 0;
+      opacity: .88;
+    }
+
+    .mock-pie {
+      width: 176px;
+      height: 176px;
+      border-radius: 50%;
+      margin: 1.5rem auto .75rem;
+      background: conic-gradient(#1cc88a 0 68%, #f6c23e 68% 86%, #e74a3b 86% 100%);
+      box-shadow: inset 0 0 0 34px #fff;
+    }
+
+    .mock-qr-box {
+      width: 96px;
+      height: 96px;
+      border: 2px solid #d1d3e2;
+      background:
+        linear-gradient(90deg, #3a3b45 8px, transparent 8px) 0 0 / 24px 24px,
+        linear-gradient(#3a3b45 8px, transparent 8px) 0 0 / 24px 24px,
+        #fff;
+      border-radius: .25rem;
+    }
+
+    .mock-mobile-note {
+      display: none;
+    }
+
+    @media (max-width: 992px) {
+      .mock-sidebar {
+        display: none;
+      }
+
+      .mock-search {
+        width: 56vw;
+      }
+
+      .mock-filter-grid {
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+      }
+
+      .mock-mobile-note {
+        display: block;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .mock-topbar {
+        padding: 0 .85rem;
+      }
+
+      .mock-main {
+        padding: 1rem;
+      }
+
+      .mock-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .mock-search {
+        width: 100%;
+      }
+
+      .mock-filter-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-shell">
+    <aside class="mock-sidebar">
+      <div class="mock-brand">
+        <img src="../public/image/logo-baznas.png" alt="Logo BAZNAS">
+        <span>SIMASET</span>
+      </div>
+
+      <a class="mock-nav-link active" href="#"><i class="fas fa-fw fa-tachometer-alt"></i><span>Dashboard</span></a>
+
+      <div class="mock-nav-heading">User Management</div>
+      <a class="mock-nav-link" href="#"><i class="fas fa-fw fa-users-cog"></i><span>Manajemen User</span></a>
+
+      <div class="mock-nav-heading">Master Data</div>
+      <a class="mock-nav-link" href="#"><i class="fas fa-fw fa-database"></i><span>Data Master</span></a>
+      <div class="mock-submenu">
+        <div>Data Amil</div>
+        <div>Data Barang</div>
+        <div>Data Kategori</div>
+        <div>Data Lokasi</div>
+      </div>
+
+      <a class="mock-nav-link" href="#"><i class="fas fa-fw fa-box"></i><span>Data Aset</span></a>
+      <div class="mock-submenu">
+        <div>Data Asset</div>
+        <div>Maintenance</div>
+        <div>Riwayat Pindah</div>
+        <div>Aset Hilang</div>
+        <div>Penyusutan Aset</div>
+        <div>Penghapusan Aset</div>
+      </div>
+
+      <a class="mock-nav-link" href="#"><i class="fas fa-fw fa-clipboard-check"></i><span>Approval</span></a>
+
+      <div class="mock-nav-heading">Report</div>
+      <a class="mock-nav-link" href="#"><i class="fas fa-fw fa-file-alt"></i><span>Laporan</span></a>
+    </aside>
+
+    <main class="mock-content">
+      <header class="mock-topbar">
+        <form class="mock-search">
+          <input type="text" placeholder="Search...">
+          <button type="button"><i class="fas fa-search"></i></button>
+        </form>
+        <div class="d-flex align-items-center">
+          <a class="nav-link position-relative" href="#">
+            <i class="fas fa-bell fa-fw text-gray-500"></i>
+            <span class="badge badge-danger badge-counter">3</span>
+          </a>
+          <div class="topbar-divider d-none d-sm-block"></div>
+          <span class="small text-gray-600 mr-2 d-none d-sm-inline">Super Admin</span>
+          <img class="img-profile rounded-circle" src="../public/sbadmin2/img/undraw_profile.svg" alt="Profil" style="width: 34px; height: 34px;">
+        </div>
+      </header>
+
+      <section class="mock-main">
+        <div class="alert alert-info mock-mobile-note">
+          Tampilan mobile: sidebar dibuat menjadi menu ringkas seperti tombol hamburger pada sistem asli.
+        </div>
+
+        <div class="mock-title-row">
+          <div>
+            <h1 class="h3 mb-1 text-gray-800"><i class="fas fa-tachometer-alt mr-2"></i>Dashboard</h1>
+            <div class="text-muted small">Ringkasan monitoring aset, nilai buku, approval, dan aktivitas mutasi.</div>
+          </div>
+          <div class="mock-actions">
+            <button class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i>Tambah Asset</button>
+            <button class="btn btn-info btn-sm"><i class="fas fa-file-excel mr-1"></i>Import Excel</button>
+            <button class="btn btn-warning btn-sm"><i class="fas fa-print mr-1"></i>Cetak QR</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2 mock-stat">
+              <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                  <div class="col mr-2">
+                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Volume Aset</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">1.248 Unit</div>
+                  </div>
+                  <div class="col-auto"><i class="fas fa-boxes fa-2x text-gray-300"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2 mock-stat primary">
+              <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                  <div class="col mr-2">
+                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Nilai Buku Saat Ini</div>
+                    <div class="h5 mb-0 font-weight-bold text-primary">Rp 842.500.000</div>
+                  </div>
+                  <div class="col-auto"><i class="fas fa-wallet fa-2x text-gray-300"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2 mock-stat warning">
+              <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                  <div class="col mr-2">
+                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Maintenance Aktif</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">18 Tindakan</div>
+                  </div>
+                  <div class="col-auto"><i class="fas fa-tools fa-2x text-gray-300"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2 mock-stat danger">
+              <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                  <div class="col mr-2">
+                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Approval Menunggu</div>
+                    <div class="h5 mb-0 font-weight-bold text-gray-800">7 Pengajuan</div>
+                  </div>
+                  <div class="col-auto"><i class="fas fa-exclamation-circle fa-2x text-danger"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow mb-4">
+          <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h2 class="mock-section-title"><i class="fas fa-list mr-1"></i>Daftar Aset</h2>
+            <button class="btn btn-secondary btn-sm"><i class="fas fa-filter mr-1"></i>Filter</button>
+          </div>
+          <div class="card-body">
+            <div class="card border-left-primary shadow-sm mb-3">
+              <div class="card-body">
+                <div class="mock-filter-grid">
+                  <div>
+                    <label class="small font-weight-bold">Kategori</label>
+                    <select class="form-control"><option>Semua Kategori</option></select>
+                  </div>
+                  <div>
+                    <label class="small font-weight-bold">Lokasi</label>
+                    <select class="form-control"><option>Semua Lokasi</option></select>
+                  </div>
+                  <div>
+                    <label class="small font-weight-bold">Tahun</label>
+                    <input class="form-control" value="2026">
+                  </div>
+                  <div>
+                    <label class="small font-weight-bold">Kondisi</label>
+                    <select class="form-control"><option>Semua Kondisi</option></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover mb-0" style="font-size: 14px;">
+                <thead class="thead-light">
+                  <tr class="text-center">
+                    <th><input type="checkbox"></th>
+                    <th>Kode Aset</th>
+                    <th>Barang</th>
+                    <th>Kategori</th>
+                    <th>Lokasi</th>
+                    <th>Kondisi</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="text-center">
+                    <td><input type="checkbox"></td>
+                    <td class="font-weight-bold text-success">01.02.03.04.A.26.001</td>
+                    <td class="text-left">Laptop Operasional</td>
+                    <td><span class="badge badge-primary">Elektronik</span></td>
+                    <td>Ruang Keuangan</td>
+                    <td><span class="badge badge-success">Baik</span></td>
+                    <td><span class="badge badge-secondary">Aktif</span></td>
+                    <td>
+                      <button class="btn btn-info btn-sm"><i class="fas fa-eye"></i></button>
+                      <button class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></button>
+                      <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                  <tr class="text-center">
+                    <td><input type="checkbox"></td>
+                    <td class="font-weight-bold text-success">03.01.05.02.B.25.014</td>
+                    <td class="text-left">Printer Divisi</td>
+                    <td><span class="badge badge-primary">Elektronik</span></td>
+                    <td>Ruang Program</td>
+                    <td><span class="badge badge-warning">Rusak</span></td>
+                    <td><span class="badge badge-secondary">Nonaktif</span></td>
+                    <td>
+                      <button class="btn btn-info btn-sm"><i class="fas fa-eye"></i></button>
+                      <button class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></button>
+                      <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow h-100">
+              <div class="card-header py-3 bg-light">
+                <h2 class="mock-section-title"><i class="fas fa-chart-pie mr-1"></i>Distribusi Kondisi Aset</h2>
+              </div>
+              <div class="card-body text-center">
+                <div class="mock-pie"></div>
+                <span class="badge badge-success px-3">Baik</span>
+                <span class="badge badge-warning px-3">Rusak</span>
+                <span class="badge badge-danger px-3">Hilang</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow h-100">
+              <div class="card-header py-3 bg-light d-flex justify-content-between align-items-center">
+                <h2 class="mock-section-title"><i class="fas fa-chart-bar mr-1"></i>Mutasi Aset Tahun 2026</h2>
+                <select class="form-control form-control-sm text-success font-weight-bold" style="width: 130px;">
+                  <option>Tahun 2026</option>
+                </select>
+              </div>
+              <div class="card-body">
+                <div class="mock-chart">
+                  <div class="mock-bar" style="height: 28%;"></div>
+                  <div class="mock-bar" style="height: 52%;"></div>
+                  <div class="mock-bar" style="height: 40%;"></div>
+                  <div class="mock-bar" style="height: 72%;"></div>
+                  <div class="mock-bar" style="height: 45%;"></div>
+                  <div class="mock-bar" style="height: 85%;"></div>
+                  <div class="mock-bar" style="height: 58%;"></div>
+                  <div class="mock-bar" style="height: 66%;"></div>
+                  <div class="mock-bar" style="height: 49%;"></div>
+                  <div class="mock-bar" style="height: 74%;"></div>
+                  <div class="mock-bar" style="height: 38%;"></div>
+                  <div class="mock-bar" style="height: 62%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-lg-7 mb-4">
+            <div class="card shadow h-100">
+              <div class="card-header py-3 bg-light">
+                <h2 class="mock-section-title"><i class="fas fa-history mr-1"></i>Aktivitas Perpindahan Terbaru</h2>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-bordered mb-0" style="font-size: 14px;">
+                    <thead class="thead-light">
+                      <tr>
+                        <th>Kode Aset</th>
+                        <th>Lokasi Lama</th>
+                        <th>Lokasi Baru</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="font-weight-bold text-success">01.02.03.04.A.26.001</td>
+                        <td>Gudang</td>
+                        <td>Ruang Keuangan</td>
+                        <td><span class="badge badge-warning">Menunggu</span></td>
+                      </tr>
+                      <tr>
+                        <td class="font-weight-bold text-success">03.01.05.02.B.25.014</td>
+                        <td>Ruang Program</td>
+                        <td>Maintenance</td>
+                        <td><span class="badge badge-success">Disetujui</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-5 mb-4">
+            <div class="card shadow h-100">
+              <div class="card-header py-3 bg-light">
+                <h2 class="mock-section-title"><i class="fas fa-qrcode mr-1"></i>Preview Detail Aset</h2>
+              </div>
+              <div class="card-body d-flex align-items-center">
+                <div class="mock-qr-box mr-4" aria-label="Placeholder QR Code"></div>
+                <div>
+                  <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Kode Aset</div>
+                  <div class="h6 font-weight-bold text-gray-800 mb-2">01.02.03.04.A.26.001</div>
+                  <div class="small text-muted mb-3">Laptop Operasional, Ruang Keuangan, Penanggung Jawab: Ahmad.</div>
+                  <button class="btn btn-success btn-sm"><i class="fas fa-exchange-alt mr-1"></i>Ajukan Perpindahan</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\barang;
+use App\Models\Barang;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\DB;
 
@@ -11,7 +11,7 @@ class BarangController extends Controller
 {
     public function index(Request $request)
     {
-        $query = barang::query();
+        $query = Barang::query();
 
         if ($request->filled('q')) {
             $query->where('kode_barang', 'like', '%' . $request->q . '%')

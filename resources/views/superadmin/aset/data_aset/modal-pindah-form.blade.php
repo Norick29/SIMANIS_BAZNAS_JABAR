@@ -26,6 +26,11 @@
                        name="id_aset"
                        id="pindah_id_aset">
 
+                <input type="hidden"
+                       name="from_scan_qr"
+                       id="pindah_from_scan_qr"
+                       value="{{ request()->routeIs('assets.scan') ? '1' : '0' }}">
+
                 <div class="modal-body">
 
                     {{-- INFO ASET --}}
@@ -133,10 +138,11 @@
                     </button>
 
                     <button type="submit"
+                            id="btnSubmitPindahAset"
                             class="btn btn-warning">
 
                         <i class="fas fa-paper-plane"></i>
-                        Kirim Permintaan
+                        <span>Kirim Permintaan</span>
 
                     </button>
 
@@ -151,6 +157,14 @@
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
+
+    const pindahAsetForm = document.getElementById('pindahAsetForm');
+
+    if (!pindahAsetForm || pindahAsetForm.dataset.bound === '1') {
+        return;
+    }
+
+    pindahAsetForm.dataset.bound = '1';
 
     // INIT SELECT2
 $('#pindahFormModal').on('shown.bs.modal', function () {
@@ -182,12 +196,28 @@ $('#pindahFormModal').on('shown.bs.modal', function () {
 });
 
     // SUBMIT FORM
-    document.getElementById('pindahAsetForm')
-        .addEventListener('submit', function (e) {
+    pindahAsetForm.addEventListener('submit', function (e) {
 
         e.preventDefault();
 
+        if (pindahAsetForm.dataset.submitting === '1') {
+            return;
+        }
+
+        pindahAsetForm.dataset.submitting = '1';
         const formData = new FormData(this);
+        const submitButton = document.getElementById('btnSubmitPindahAset');
+        const submitText = submitButton ? submitButton.querySelector('span') : null;
+        const originalSubmitText = submitText ? submitText.textContent : '';
+        let shouldRedirect = false;
+
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+
+        if (submitText) {
+            submitText.textContent = 'Mengirim...';
+        }
 
         fetch('{{ route("assets.pindah") }}', {
 
@@ -202,7 +232,15 @@ $('#pindahFormModal').on('shown.bs.modal', function () {
 
         })
 
-        .then(response => response.json())
+        .then(async response => {
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok || !data) {
+                throw new Error(data?.message || 'Terjadi kesalahan saat mengirim permintaan.');
+            }
+
+            return data;
+        })
 
         .then(data => {
 
@@ -211,6 +249,12 @@ $('#pindahFormModal').on('shown.bs.modal', function () {
                 alert(data.message);
 
                 $('#pindahFormModal').modal('hide');
+
+                if (data.redirect_url) {
+                    shouldRedirect = true;
+                    window.location.replace(data.redirect_url);
+                    return;
+                }
 
                 location.reload();
 
@@ -226,8 +270,23 @@ $('#pindahFormModal').on('shown.bs.modal', function () {
 
             console.error(error);
 
-            alert('Terjadi kesalahan');
+            alert(error.message || 'Terjadi kesalahan');
 
+        })
+        .finally(() => {
+            if (shouldRedirect) {
+                return;
+            }
+
+            pindahAsetForm.dataset.submitting = '0';
+
+            if (submitButton) {
+                submitButton.disabled = false;
+            }
+
+            if (submitText) {
+                submitText.textContent = originalSubmitText;
+            }
         });
 
     });

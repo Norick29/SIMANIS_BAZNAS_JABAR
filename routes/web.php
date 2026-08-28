@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/divisi', [DivisiController::class, 'store'])->name('divisi.store');
     Route::put('/divisi/{id}', [DivisiController::class, 'update'])->name('divisi.update');
     Route::delete('/divisi/{id}', [DivisiController::class, 'destroy'])->name('divisi.destroy');
-    
+
     Route::get('/kategori', [KategoriController::class, 'index'])->name('kategori.index');
     Route::post('/kategori/store', [KategoriController::class, 'store'])->name('kategori.store');
     Route::put('/kategori/{id}', [KategoriController::class, 'update'])->name('kategori.update');
@@ -125,7 +125,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/aset-penyusutan/peremajaan/{id}', [PenyusutanAsetController::class, 'ajukanPeremajaan'])->name('penyusutan.peremajaan');
     Route::post('/aset-penyusutan/penghapusan/{id}', [PenyusutanAsetController::class, 'ajukanPenghapusan'])->name('penyusutan.penghapusan');
 });
-    
+
     // ⚡ TAMBAHKAN ROUTE INI BRO!
     Route::post('/ditemukan/{id_hilang}', [AsetHilangController::class, 'ditemukan'])->name('hilang.ditemukan');
     
@@ -170,12 +170,12 @@ Route::get('/scan/{kode_aset}', [AssetController::class, 'scanQr'])->name('asset
 
 // Halaman publik untuk verifikasi tanda tangan digital lewat scan QR
 Route::get('/verify-approval/{id}', [ApprovalController::class, 'verifyPublicApproval'])->name('approvals.verify')->middleware('signed');;
+Route::get('/verify-report', [AssetController::class, 'verifyReport'])->name('reports.verify')->middleware('signed');
 
 Route::get('/scan-login-bridge', [AssetController::class, 'scanLoginBridge'])->name('assets.scan.bridge');
 
 Route::middleware(['auth', SuperAdminMiddleware::class])->group(function () {
-    // Add owner-only routes here
-    // Route::resource('users', UserController::class);
+    
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users/store', [UserController::class, 'store'])->name('users.store');
     Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');

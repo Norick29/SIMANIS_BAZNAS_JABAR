@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\jabatan;
+use App\Models\Jabatan;
 use Illuminate\Support\Facades\DB;
 
 class JabatanController extends Controller

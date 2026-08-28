@@ -14,13 +14,16 @@ return new class extends Migration
         Schema::create('signatures', function (Blueprint $table) {
             $table->id('id_signature');
             $table->unsignedBigInteger('id_aset');
+            $table->unsignedBigInteger('id_pindah');
             $table->unsignedBigInteger('user_id');
+            $table->longText('signed_data')->nullable();
             $table->text('signature');
             $table->string('public_key_fingerprint', 128)->nullable();
             $table->string('algorithm', 64)->default('RSA-2048-SHA256');
             $table->timestamp('signed_at')->useCurrent();
             $table->timestamps();
-
+            
+            $table->foreign('id_pindah')->references('id_pindah')->on('pindah_asets')->onUpdate('cascade')->onDelete('cascade');
             $table->foreign('user_id')->references('id_user')->on('users')->onUpdate('cascade')->onDelete('cascade');
             $table->foreign('id_aset')->references('id_aset')->on('assets')->onUpdate('cascade')->onDelete('cascade');
         });

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\sumber;
+use App\Models\Sumber;
 
 class SumberController extends Controller
 {
     public function index(Request $request)
     {
-        $query = sumber::query();
+        $query = Sumber::query();
 
         if ($request->filled('q')) {
             $query->where('kode_sumber_dana', 'like', '%' . $request->q . '%')

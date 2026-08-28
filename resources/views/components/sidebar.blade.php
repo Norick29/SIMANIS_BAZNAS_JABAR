@@ -52,8 +52,8 @@
             </a>
             <div id="collapseMaster" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionSidebar">
                 <div class="bg-white py-2 collapse-inner rounded">
-                    <a class="collapse-item" href="{{ route('assets.index') }}">Data Asset</a>
-                    <a class="collapse-item" href="{{ route('maintenances.index') }}">Maintenance</a>
+                    <a class="collapse-item" href="{{ route('penyusutan.index') }}">Penyusutan Aset</a>
+                    <a class="collapse-item" href="{{ route('penghapusan.index') }}">Penghapusan Aset</a>
                     <a class="collapse-item" href="{{ route('riwayat.pindah') }}">Riwayat Pindah</a>
                 </div>
             </div>

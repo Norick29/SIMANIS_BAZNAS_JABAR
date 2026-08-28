@@ -355,15 +355,23 @@ public function pindahAset(Request $request)
         'id_amil_sesudah' => 'required|exists:amils,id_amil',
         'id_lokasi_baru' => 'required|exists:lokasis,id_lokasi',
         'alasan' => 'required|string|max:500',
+        'from_scan_qr' => 'nullable|boolean',
     ]);
+
+    $logoutAfterSuccess = $request->boolean('from_scan_qr');
 
     DB::beginTransaction();
 
     try {
 
-        $aset = Asset::findOrFail($request->id_aset);
+        $aset = Asset::where('id_aset', $request->id_aset)
+            ->lockForUpdate()
+            ->firstOrFail();
 
         // VALIDASI LOGIC
+        if (in_array(Auth::user()->role, ['kadept', 'kadiv'])) {
+            throw new \Exception('Pengajuan perpindahan aset hanya dapat dilakukan oleh Staff / Operator Logistik.');
+        }
 
         if ($aset->id_amil == $request->id_amil_sesudah) {
             throw new \Exception('Penanggung jawab baru tidak boleh sama.');
@@ -400,8 +408,9 @@ public function pindahAset(Request $request)
             'id_pindah' => $pindah->id_pindah,
             'stage' => 1, // Stage 1 untuk Kepala Departemen
             'status' => 'menunggu',
+            'requested_by' => Auth::id(),
             'approved_by' => null, // Belum ada yang approve
-            'approval_date' => null,
+            'approved_at' => null,
         ]);
 
         // JIKA BUTUH STAGE 2, BUAT APPROVAL KEDUA
@@ -430,6 +439,23 @@ public function pindahAset(Request $request)
         // 3. Blast notifikasi ke semua Kadept (Otomatis masuk database navbar & kirim email)
         foreach ($kadeptUsers as $kadept) {
             $kadept->notify(new AssetMutationNotification($details));
+        }
+
+        if ($logoutAfterSuccess) {
+            $redirectUrl = URL::signedRoute('assets.scan', [
+                'kode_aset' => $aset->kode_aset,
+            ]);
+
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return response()->json([
+                'success' => true,
+                'logout' => true,
+                'redirect_url' => $redirectUrl,
+                'message' => 'Permintaan pindah aset berhasil dikirim. Sesi Anda telah diakhiri dan halaman kembali ke akses publik.'
+            ]);
         }
 
         return response()->json([
@@ -479,9 +505,12 @@ public function scanQr($kode_aset)
     // 1. AMBIL DATA MASTER AMIL DAN LOKASI UNTUK DROPDOWN MODAL PINDAH
     $amils = Amil::orderBy('nama', 'asc')->get();
     $lokasis = Lokasi::orderBy('nama_lokasi', 'asc')->get();
+    $hasPendingPindah = PindahAset::where('id_aset', $aset->id_aset)
+        ->where('status', 'menunggu')
+        ->exists();
 
     // 2. KIRIMKAN SEMUANYA (aset, amils, lokasis) KE VIEW SCAN RESULT
-    return view('superadmin.aset.data_aset.scan-result', compact('aset', 'amils', 'lokasis'));
+    return view('superadmin.aset.data_aset.scan-result', compact('aset', 'amils', 'lokasis', 'hasPendingPindah'));
 }
 
 public function update(Request $request, $id)
@@ -1092,6 +1121,32 @@ public function reportIndex()
     return view('superadmin.reports.index', compact('lokasis', 'kategoris', 'sumbers', 'tahuns', 'jenises'));
 }
 
+public function verifyReport(Request $request)
+{
+    return view('superadmin.reports.verify-public', [
+        'document' => $request->query('document', 'Laporan'),
+        'role' => $request->query('role', '-'),
+        'signer' => $request->query('signer', '-'),
+        'printedBy' => $request->query('printed_by', '-'),
+        'printedAt' => $request->query('printed_at', '-'),
+        'fingerprint' => $request->query('fingerprint', '-'),
+        'signature' => $request->query('signature', '-'),
+    ]);
+}
+
+private function makeReportVerificationUrl($document, $role, $signer, $printedBy, $printedAt, $fingerprint, $signature)
+{
+    return URL::signedRoute('reports.verify', [
+        'document' => $document,
+        'role' => $role,
+        'signer' => $signer,
+        'printed_by' => $printedBy,
+        'printed_at' => $printedAt,
+        'fingerprint' => 'KEY-' . $fingerprint,
+        'signature' => substr($signature, 0, 25) . '...',
+    ]);
+}
+
 public function reportAssetPrint(Request $request)
 {
     // 1. Logika Query & Filtering Aset (Tetap sama seperti kode kamu)
@@ -1140,9 +1195,9 @@ $sigKadept = base64_encode(hash_hmac('sha256', $manifestKadept, 'SECRET_KEY_SYST
 $manifestKadiv = "BAZNAS JABAR | Jenis: Laporan Aset | Oleh Kadiv: {$kepalaDivisi} | Waktu: {$timestamp} | Nilai: Rp " . number_format($totalHarga, 0, ',', '.');
 $sigKadiv = base64_encode(hash_hmac('sha256', $manifestKadiv, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
 
-// 3. Susun data String akhir yang dimasukkan ke dalam QR Code masing-masing
-$qrDataKadept = "VERIFIED_KADEPT\nDoc: Laporan Inventaris Aset\nKey Fingerprint: KEY-{$fingerprintKadept}\nSignature: " . substr($sigKadept, 0, 25) . "...";
-$qrDataKadiv  = "VERIFIED_KADIV\nDoc: Laporan Inventaris Aset\nKey Fingerprint: KEY-{$fingerprintKadiv}\nSignature: " . substr($sigKadiv, 0, 25) . "...";
+// 3. Susun link verifikasi publik untuk QR Code masing-masing
+$qrDataKadept = $this->makeReportVerificationUrl('Laporan Inventaris Aset', 'Kepala Departemen', $kepalaDept, $printedBy, $timestamp, $fingerprintKadept, $sigKadept);
+$qrDataKadiv  = $this->makeReportVerificationUrl('Laporan Inventaris Aset', 'Kepala Divisi', $kepalaDivisi, $printedBy, $timestamp, $fingerprintKadiv, $sigKadiv);
 
 // Log Tracker untuk bagian tengah (Audit Stamp)
 $qrCodeSystem = "SIMASET AUDIT STAMP | Operator Cetak: {$printedBy} ({$role}) | Waktu: {$timestamp} | Status Data: Valid.";
@@ -1230,8 +1285,8 @@ public function reportMutasiPrint(Request $request)
     $manifestKadiv = "BAZNAS JABAR | Jenis: Laporan Mutasi | Oleh Kadiv: {$kepalaDivisi} | Waktu: {$timestamp} | Total: {$mutasis->count()} Transaksi";
     $sigKadiv = base64_encode(hash_hmac('sha256', $manifestKadiv, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
 
-    $qrDataKadept = "VERIFIED_KADEPT\nDoc: Laporan Mutasi Aset\nKey Fingerprint: KEY-{$fingerprintKadept}\nSignature: " . substr($sigKadept, 0, 25) . "...";
-    $qrDataKadiv  = "VERIFIED_KADIV\nDoc: Laporan Mutasi Aset\nKey Fingerprint: KEY-{$fingerprintKadiv}\nSignature: " . substr($sigKadiv, 0, 25) . "...";
+    $qrDataKadept = $this->makeReportVerificationUrl('Laporan Mutasi Aset', 'Kepala Departemen', $kepalaDept, $printedBy, $timestamp, $fingerprintKadept, $sigKadept);
+    $qrDataKadiv  = $this->makeReportVerificationUrl('Laporan Mutasi Aset', 'Kepala Divisi', $kepalaDivisi, $printedBy, $timestamp, $fingerprintKadiv, $sigKadiv);
 
     // Log Tracker Audit Tengah
     $qrCodeSystem = "SIMASET AUDIT STAMP | Operator Cetak: {$printedBy} ({$role}) | Waktu: {$timestamp} | Status Data: Valid Terintegrasi.";

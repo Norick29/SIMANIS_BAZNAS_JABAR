@@ -131,11 +131,9 @@ class UserController extends Controller
                 is_null($user->public_key)) {
                 
                 // Generate RSA key untuk approval authority
-                $keyGenerated = $user->generateRSAKeyPair();
-
-                if (!$keyGenerated) {
-                    throw new \Exception('Gagal generate RSA key pair untuk role baru.');
-                }
+                $keyPair = $this->rsaService->generateKeyPair();
+                $user->public_key = $keyPair['public_key'];
+                $user->private_key = $keyPair['private_key'];
             }
 
             // Jika role berubah dari approval ke non-approval role

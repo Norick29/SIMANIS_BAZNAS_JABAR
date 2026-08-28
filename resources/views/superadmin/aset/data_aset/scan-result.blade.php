@@ -120,27 +120,33 @@
                 </small>
             </div>
 
-            @auth
-                {{-- SKENARIO 1: JIKA USER SUDAH LOGIN --}}
-                @if(auth()->user()->role !== 'kadept' && auth()->user()->role !== 'kadiv')
-                    {{-- Jika yang login adalah STAF / SUPERADMIN, tombol fungsi asli tetap berjalan --}}
-                    <button type="button" id="btnBukaModalPindah" class="btn btn-warning btn-block font-weight-bold">
-                        <i class="fas fa-exchange-alt"></i> Ajukan Perpindahan Aset
-                    </button>
-                @else
-                    {{-- Jika yang login adalah KADEPT / KADIV, tombol dimatikan dan diberi alert --}}
-                    <div class="alert alert-info text-center border-info shadow-sm mb-0">
-                        <i class="fas fa-info-circle text-info"></i> Anda login sebagai <strong>{{ strtoupper(auth()->user()->role) }}</strong>.<br>
-                        <small>Menu pengajuan mutasi aset lapangan hanya diperuntukkan bagi Staff / Operator Logistik.</small>
-                    </div>
-                @endif
+            @if($hasPendingPindah)
+                <div class="alert alert-warning text-center border-warning shadow-sm mb-0">
+                    <i class="fas fa-clock"></i> Aset ini sudah memiliki pengajuan perpindahan yang sedang menunggu approval.
+                </div>
             @else
-                {{-- SKENARIO 2: JIKA USER BELUM LOGIN --}}
-                {{-- Biarkan tombol bridge muncul, karena sistem belum tahu siapa yang melakukan scan --}}
-                <a href="{{ route('assets.scan.bridge') }}?target={{ urlencode(request()->fullUrl()) }}" class="btn btn-warning btn-block font-weight-bold">
-                    <i class="fas fa-exchange-alt"></i> Ajukan Perpindahan Aset
-                </a>
-            @endauth
+                @auth
+                    {{-- SKENARIO 1: JIKA USER SUDAH LOGIN --}}
+                    @if(auth()->user()->role !== 'kadept' && auth()->user()->role !== 'kadiv')
+                        {{-- Jika yang login adalah STAF / SUPERADMIN, tombol fungsi asli tetap berjalan --}}
+                        <button type="button" id="btnBukaModalPindah" class="btn btn-warning btn-block font-weight-bold">
+                            <i class="fas fa-exchange-alt"></i> Ajukan Perpindahan Aset
+                        </button>
+                    @else
+                        {{-- Jika yang login adalah KADEPT / KADIV, tombol dimatikan dan diberi alert --}}
+                        <div class="alert alert-info text-center border-info shadow-sm mb-0">
+                            <i class="fas fa-info-circle text-info"></i> Anda login sebagai <strong>{{ strtoupper(auth()->user()->role) }}</strong>.<br>
+                            <small>Menu pengajuan mutasi aset lapangan hanya diperuntukkan bagi Staff / Operator Logistik.</small>
+                        </div>
+                    @endif
+                @else
+                    {{-- SKENARIO 2: JIKA USER BELUM LOGIN --}}
+                    {{-- Biarkan tombol bridge muncul, karena sistem belum tahu siapa yang melakukan scan --}}
+                    <a href="{{ route('assets.scan.bridge') }}?target={{ urlencode(request()->fullUrl()) }}" class="btn btn-warning btn-block font-weight-bold">
+                        <i class="fas fa-exchange-alt"></i> Ajukan Perpindahan Aset
+                    </a>
+                @endauth
+            @endif
 
         </div>
 
@@ -185,59 +191,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ==========================================
-    // INIT SELECT2 (Kodingan asli kamu tetap utuh)
-    // ==========================================
-    $('#pindahFormModal').on('shown.bs.modal', function () {
-        if (!$('.select-amil-pindah').hasClass('select2-hidden-accessible')) {
-            $('.select-amil-pindah').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                placeholder: 'Cari penanggung jawab...',
-                dropdownParent: $('#pindahFormModal')
-            });
-        }
-
-        if (!$('.select-lokasi-pindah').hasClass('select2-hidden-accessible')) {
-            $('.select-lokasi-pindah').select2({
-                theme: 'bootstrap4',
-                width: '100%',
-                placeholder: 'Cari lokasi...',
-                dropdownParent: $('#pindahFormModal')
-            });
-        }
-    });
-
-    // ==========================================
-    // SUBMIT FORM AJAX FETCH (Kodingan asli kamu tetap utuh)
-    // ==========================================
-    document.getElementById('pindahAsetForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        const formData = new FormData(this);
-
-        fetch('{{ route("assets.pindah") }}', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                $('#pindahFormModal').modal('hide');
-                window.location.href = "{{ route('reports.index') }}";
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            alert('Terjadi kesalahan');
-        });
-    });
 });
 </script>
 @endsection

@@ -14,6 +14,14 @@ class Approval extends Model
     protected $primaryKey = 'id_approval';
     protected $guarded = ['id_approval'];
     protected $dates = ['created_at', 'updated_at', 'deleted_at', 'approved_at'];
+    protected $casts = [
+        'id_approval' => 'integer',
+        'id_pindah' => 'integer',
+        'reference_id' => 'integer',
+        'requested_by' => 'integer',
+        'approved_by' => 'integer',
+        'stage' => 'integer',
+    ];
 
     public function pindahAset()
     {

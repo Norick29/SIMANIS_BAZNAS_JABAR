@@ -187,8 +187,24 @@ public function printLaporanPenghapusan(Request $request)
     $manifestKadiv = "BAZNAS JABAR | Jenis: Laporan Penghapusan Aset | Oleh Kadiv: {$kepalaDivisi} | Waktu: {$timestamp} | Est Nilai: Rp " . number_format($totalNilaiBukuDihapus, 0, ',', '.');
     $sigKadiv = base64_encode(hash_hmac('sha256', $manifestKadiv, 'SECRET_KEY_SYSTEM_BAZNAS_JABAR'));
 
-    $qrDataKadept = "VERIFIED_KADEPT\nDoc: Laporan Penghapusan Aset\nKey Fingerprint: KEY-{$fingerprintKadept}\nSignature: " . substr($sigKadept, 0, 25) . "...";
-    $qrDataKadiv  = "VERIFIED_KADIV\nDoc: Laporan Penghapusan Aset\nKey Fingerprint: KEY-{$fingerprintKadiv}\nSignature: " . substr($sigKadiv, 0, 25) . "...";
+    $qrDataKadept = URL::signedRoute('reports.verify', [
+        'document' => 'Laporan Penghapusan Aset',
+        'role' => 'Kepala Departemen',
+        'signer' => $kepalaDept,
+        'printed_by' => $printedBy,
+        'printed_at' => $timestamp,
+        'fingerprint' => 'KEY-' . $fingerprintKadept,
+        'signature' => substr($sigKadept, 0, 25) . '...',
+    ]);
+    $qrDataKadiv  = URL::signedRoute('reports.verify', [
+        'document' => 'Laporan Penghapusan Aset',
+        'role' => 'Kepala Divisi',
+        'signer' => $kepalaDivisi,
+        'printed_by' => $printedBy,
+        'printed_at' => $timestamp,
+        'fingerprint' => 'KEY-' . $fingerprintKadiv,
+        'signature' => substr($sigKadiv, 0, 25) . '...',
+    ]);
 
     $qrCodeSystem = "SIMASET DISPOSAL STAMP | Operator Cetak: {$printedBy} ({$role}) | Waktu: {$timestamp} | Status Data: Valid.";
 

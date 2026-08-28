@@ -13,8 +13,12 @@ class RSAService
             "private_key_bits" => 2048,
             "private_key_type" => OPENSSL_KEYTYPE_RSA,
             "digest_alg"       => "sha256",
-            "config"           => "C:/xampp/php/extras/ssl/openssl.cnf",
         ];
+
+        $localOpenSslConfig = "C:/xampp/php/extras/ssl/openssl.cnf";
+        if (file_exists($localOpenSslConfig)) {
+            $config["config"] = $localOpenSslConfig;
+        }
 
         // Generate key pair
         $res = openssl_pkey_new($config);

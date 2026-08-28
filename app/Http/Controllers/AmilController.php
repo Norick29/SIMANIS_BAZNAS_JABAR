@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\amil;
-use App\Models\jabatan;
-use App\Models\divisi;
+use App\Models\Amil;
+use App\Models\Jabatan;
+use App\Models\Divisi;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\DB;
 
