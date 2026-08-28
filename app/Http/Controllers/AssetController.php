@@ -433,7 +433,7 @@ public function pindahAset(Request $request)
             'message'   => "Aset dengan kode {$aset->kode_aset} memerlukan persetujuan Anda pada Stage 1.",
             'icon'      => 'fas fa-file-alt',
             'bg_color'  => 'bg-success', // Nuansa hijau BAZNAS
-            'url'       => url('/approvals') // Sesuaikan dengan route halaman approval kadept kamu
+            'url'       => route('approvals.index') // Sesuaikan dengan route halaman approval kadept kamu
         ];
 
         // 3. Blast notifikasi ke semua Kadept (Otomatis masuk database navbar & kirim email)
@@ -557,27 +557,17 @@ public function update(Request $request, $id)
             ->first();
 
         if ($setting) {
-            $tahunSekarang = (int)date('Y');
-            $umurAset = $tahunSekarang - (int)$aset->tahun;
-            
             $nilaiResiduMinimumTotal = $totalHarga * 0.10; // Batas 10%
             $persentaseTahunan = $setting->persentase / 100;
 
-            // Hitung ulang akumulasi nilai penyusutan berdasarkan total_harga yang baru
-            if ($umurAset >= $setting->umur_ekonomis) {
-                $totalNilaiSetelah = $nilaiResiduMinimumTotal;
-                $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
-            } else {
-                $totalNilaiPenyusutan = $totalHarga * ($persentaseTahunan * $umurAset);
-                $totalNilaiCalculated = $totalHarga - $totalNilaiPenyusutan;
-                
-                if ($totalNilaiCalculated < $nilaiResiduMinimumTotal) {
-                    $totalNilaiSetelah = $nilaiResiduMinimumTotal;
-                    $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
-                } else {
-                    $totalNilaiSetelah = $totalNilaiCalculated;
-                }
-            }
+            $nilaiBukuSebelumSusut = $totalHarga;
+            $penyusutanTahunIni = $totalHarga * $persentaseTahunan;
+            $ruangPenyusutan = max($nilaiBukuSebelumSusut - $nilaiResiduMinimumTotal, 0);
+            $totalNilaiPenyusutan = min($penyusutanTahunIni, $ruangPenyusutan);
+            $totalNilaiSetelah = max(
+                $nilaiBukuSebelumSusut - $totalNilaiPenyusutan,
+                $nilaiResiduMinimumTotal
+            );
 
             // Update baris log di tabel penyusutan_aset agar angkanya sinkron
             $logPenyusutanAktif->update([
@@ -586,12 +576,6 @@ public function update(Request $request, $id)
                 'nilai_setelah_penyusutan' => $totalNilaiSetelah,
             ]);
 
-            // Sekaligus perbarui kembali nilai total_harga di master aset agar match dengan potongan setelah susut yang baru
-            $hargaPerUnitSetelahSusut = $totalNilaiSetelah / $aset->volume;
-            $aset->update([
-                'harga'       => $hargaPerUnitSetelahSusut,
-                'total_harga' => $totalNilaiSetelah
-            ]);
         }
     }
 
@@ -631,16 +615,6 @@ public function update(Request $request, $id)
     return redirect()
         ->route('assets.index')
         ->with('success', $pesan);
-}
-
-public function destroy($id)
-{
-    $aset = Asset::findOrFail($id);
-    $aset->delete();
-
-    return redirect()
-        ->back()
-        ->with('success', 'Data aset berhasil dihapus.');
 }
 
 public function getJsonDetail($id)
@@ -784,25 +758,17 @@ private function syncPendingPenyusutanAfterAssetValueChange(Asset $aset, float $
         return;
     }
 
-    $tahunSekarang = (int) date('Y');
-    $umurAset = $tahunSekarang - (int) $aset->tahun;
     $nilaiResiduMinimumTotal = $totalHarga * 0.10;
     $persentaseTahunan = $setting->persentase / 100;
 
-    if ($umurAset >= $setting->umur_ekonomis) {
-        $totalNilaiSetelah = $nilaiResiduMinimumTotal;
-        $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
-    } else {
-        $totalNilaiPenyusutan = $totalHarga * ($persentaseTahunan * $umurAset);
-        $totalNilaiCalculated = $totalHarga - $totalNilaiPenyusutan;
-
-        if ($totalNilaiCalculated < $nilaiResiduMinimumTotal) {
-            $totalNilaiSetelah = $nilaiResiduMinimumTotal;
-            $totalNilaiPenyusutan = $totalHarga - $nilaiResiduMinimumTotal;
-        } else {
-            $totalNilaiSetelah = $totalNilaiCalculated;
-        }
-    }
+    $nilaiBukuSebelumSusut = $totalHarga;
+    $penyusutanTahunIni = $totalHarga * $persentaseTahunan;
+    $ruangPenyusutan = max($nilaiBukuSebelumSusut - $nilaiResiduMinimumTotal, 0);
+    $totalNilaiPenyusutan = min($penyusutanTahunIni, $ruangPenyusutan);
+    $totalNilaiSetelah = max(
+        $nilaiBukuSebelumSusut - $totalNilaiPenyusutan,
+        $nilaiResiduMinimumTotal
+    );
 
     $logPenyusutanAktif->update([
         'nilai_awal'               => $totalHarga,
@@ -810,11 +776,6 @@ private function syncPendingPenyusutanAfterAssetValueChange(Asset $aset, float $
         'nilai_setelah_penyusutan' => $totalNilaiSetelah,
     ]);
 
-    $volume = $aset->volume > 0 ? $aset->volume : 1;
-    $aset->update([
-        'harga'       => $totalNilaiSetelah / $volume,
-        'total_harga' => $totalNilaiSetelah,
-    ]);
 }
 
 public function import(Request $request)
@@ -1130,7 +1091,7 @@ public function verifyReport(Request $request)
         'printedBy' => $request->query('printed_by', '-'),
         'printedAt' => $request->query('printed_at', '-'),
         'fingerprint' => $request->query('fingerprint', '-'),
-        'signature' => $request->query('signature', '-'),
+        'signature' => $request->query('digital_signature', '-'),
     ]);
 }
 
@@ -1143,7 +1104,7 @@ private function makeReportVerificationUrl($document, $role, $signer, $printedBy
         'printed_by' => $printedBy,
         'printed_at' => $printedAt,
         'fingerprint' => 'KEY-' . $fingerprint,
-        'signature' => substr($signature, 0, 25) . '...',
+        'digital_signature' => substr($signature, 0, 25) . '...',
     ]);
 }
 

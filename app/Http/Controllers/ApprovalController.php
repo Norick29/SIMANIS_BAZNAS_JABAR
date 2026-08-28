@@ -397,6 +397,11 @@ class ApprovalController extends Controller
                 $msgText = $dataNotif['jenis_aksi'] == 'pindah' 
                     ? "Pengajuan mutasi aset dengan kode {$dataNotif['kode_aset_lama']} telah disetujui Kepala Departemen dan diteruskan ke Kepala Divisi."
                     : "Usulan {$dataNotif['jenis_aksi']} aset dengan kode {$dataNotif['kode_aset_lama']} disetujui Kepala Departemen & diteruskan ke Kepala Divisi.";
+                $urlStageOne = match ($dataNotif['jenis_aksi']) {
+                    'pindah' => route('riwayat.pindah'),
+                    'peremajaan' => route('penyusutan.index'),
+                    default => route('penghapusan.index'),
+                };
 
                 $pengaju->notify(new AssetMutationNotification([
                     'id_pindah' => $dataNotif['id_pindah'],
@@ -404,7 +409,7 @@ class ApprovalController extends Controller
                     'message'   => $msgText,
                     'icon'      => 'fas fa-check-circle',
                     'bg_color'  => 'bg-success',
-                    'url'       => url('/approvals')
+                    'url'       => $urlStageOne
                 ])); 
             }
 
@@ -420,7 +425,7 @@ class ApprovalController extends Controller
                     'message'   => $msgKadiv,
                     'icon'      => 'fas fa-user-shield',
                     'bg_color'  => 'bg-primary',
-                    'url'       => url('/approvals')
+                    'url'       => route('approvals.index')
                 ])); 
             }
         }
@@ -432,15 +437,15 @@ class ApprovalController extends Controller
                 if($dataNotif['jenis_aksi'] == 'pindah') {
                     $titleFinal = 'Mutasi Aset Disetujui Penuh (Final)';
                     $msgFinal = "Selamat, pengajuan mutasi aset untuk kode {$kodeFinal} telah disetujui oleh Kepala Divisi. Kode aset dan QR Code baru telah diperbarui."; 
-                    $urlFinal = url('/riwayat-pindah-aset'); 
+                    $urlFinal = route('riwayat.pindah'); 
                 } elseif($dataNotif['jenis_aksi'] == 'peremajaan') {
                     $titleFinal = 'Peremajaan Aset Disetujui (Final)';
                     $msgFinal = "Selamat, usulan peremajaan aset dengan kode {$kodeFinal} disetujui Kepala Divisi. Umur ekonomis aset berhasil diperpanjang +5 tahun.";
-                    $urlFinal = url('/aset-penyusutan');
+                    $urlFinal = route('penyusutan.index');
                 } else {
                     $titleFinal = 'Penghapusan Aset Disetujui (Final)';
                     $msgFinal = "Selamat, pengajuan pemusnahan aset dengan kode {$kodeFinal} disetujui Kepala Divisi. Data telah diarsipkan ke riwayat log penghapusan.";
-                    $urlFinal = url('/aset-penyusutan');
+                    $urlFinal = route('penghapusan.index');
                 }
 
                 $pengaju->notify(new AssetMutationNotification([
@@ -811,7 +816,7 @@ public function reject(Request $request, $id)
                 $kodeAsetInfo = $pindah->asset->kode_aset ?? '-';
             }
             $msgNotif = "Pengajuan mutasi aset dengan kode {$kodeAsetInfo} ditolak. Alasan: \"{$request->alasan}\"";
-            $urlNotif = url('/riwayat-pindah-aset'); 
+            $urlNotif = route('riwayat.pindah'); 
 
         } elseif ($approval->approval_type === \App\Models\PenyusutanAset::class) {
             
@@ -830,7 +835,7 @@ public function reject(Request $request, $id)
                 $msgNotif = "Pengajuan PEREMAJAAN untuk aset dengan kode {$kodeAsetInfo} ditolak pimpinan. Alasan: \"{$request->alasan}\"";
             }
 
-            $urlNotif = url('/aset-penyusutan');
+            $urlNotif = route('penyusutan.index');
         } elseif ($approval->approval_type === \App\Models\PenghapusanAset::class || $isPenghapusan) {
             $penghapusan = \App\Models\PenghapusanAset::with('asset')->find($approval->reference_id);
             if ($penghapusan) {
@@ -850,7 +855,7 @@ public function reject(Request $request, $id)
                 $kodeAsetInfo = $penghapusan->asset->kode_aset ?? '-';
             }
             $msgNotif = "Pengajuan PENGHAPUSAN untuk aset dengan kode {$kodeAsetInfo} ditolak pimpinan. Alasan: \"{$request->alasan}\"";
-            $urlNotif = url('/aset-penyusutan');
+            $urlNotif = route('penghapusan.index');
         }
 
         /**

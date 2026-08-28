@@ -39,9 +39,15 @@
     </style>
 </head>
 <body>
+    @php
+        $logoPath = public_path('image/logo-baznas.png');
+        $logoSrc = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : asset('image/logo-baznas.png');
+    @endphp
     <div class="kop-surat">
         <div class="kop-logo">
-            <img src="{{ asset('image/logo-baznas.png') }}" alt="Logo BAZNAS">
+            <img src="{{ $logoSrc }}" alt="Logo BAZNAS">
         </div>
         <div class="kop-text-1">BADAN AMIL ZAKAT NASIONAL</div>
         <div class="kop-text-2">PROVINSI JAWA BARAT</div>

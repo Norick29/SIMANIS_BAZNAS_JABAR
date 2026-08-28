@@ -225,11 +225,6 @@
                                         <button type="button" class="btn btn-warning btn-sm btn-edit-asset" data-toggle="modal" data-target="#editAssetModal" data-id="{{ $aset->id_aset }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
-
-                                        {{-- DELETE --}}
-                                        <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#deleteAssetModal" data-id="{{ $aset->id_aset }}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
                                     @endif
                                 </td>
                             </tr>
@@ -260,7 +255,6 @@
 @include('superadmin.aset.data_aset.modal-create')
 @include('superadmin.aset.data_aset.modal-detail')
 @include('superadmin.aset.data_aset.modal-edit')
-@include('superadmin.aset.data_aset.modal-delete')
 @include('superadmin.aset.data_aset.modal-import')
 
 {{-- INTEGRASI JAVASCRIPT --}}

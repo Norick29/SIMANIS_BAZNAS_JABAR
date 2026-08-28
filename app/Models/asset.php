@@ -135,10 +135,6 @@ class Asset extends Model
     {
         if ($this->relationLoaded('penyusutanRecords')) {
             $penyusutanTerakhir = $this->penyusutanRecords
-                ->filter(function ($record) {
-                    return $record->status === 'disetujui'
-                        && $record->requested_by === null;
-                })
                 ->sortByDesc(function ($record) {
                     return sprintf(
                         '%s-%010d',
@@ -150,36 +146,29 @@ class Asset extends Model
 
             $nilaiDasar = $penyusutanTerakhir?->nilai_setelah_penyusutan ?? $this->total_harga ?? 0;
 
-            $totalPemulihan = $this->penyusutanRecords
-                ->filter(function ($record) {
-                    return $record->status === 'disetujui'
-                        && str_contains(strtolower($record->alasan ?? ''), 'peremajaan');
-                })
-                ->sum(function ($record) {
-                    return (float) $record->nilai_penyusutan * 0.50;
-                });
+            $pemulihanTerakhir = $penyusutanTerakhir
+                && $penyusutanTerakhir->status === 'disetujui'
+                && str_contains(strtolower($penyusutanTerakhir->alasan ?? ''), 'peremajaan')
+                    ? (float) $penyusutanTerakhir->nilai_penyusutan * 0.50
+                    : 0;
 
-            return (float) $nilaiDasar + (float) $totalPemulihan;
+            return (float) $nilaiDasar + (float) $pemulihanTerakhir;
         }
 
         $penyusutanTerakhir = $this->penyusutanRecords()
-            ->where('status', 'disetujui')
-            ->whereNull('requested_by')
             ->orderBy('created_at', 'desc')
             ->orderBy('id_penyusutan', 'desc')
             ->first();
 
         $nilaiDasar = $penyusutanTerakhir?->nilai_setelah_penyusutan ?? $this->total_harga ?? 0;
 
-        $totalPemulihan = $this->penyusutanRecords()
-            ->where('status', 'disetujui')
-            ->where('alasan', 'LIKE', '%peremajaan%')
-            ->get()
-            ->sum(function ($record) {
-                return (float) $record->nilai_penyusutan * 0.50;
-            });
+        $pemulihanTerakhir = $penyusutanTerakhir
+            && $penyusutanTerakhir->status === 'disetujui'
+            && str_contains(strtolower($penyusutanTerakhir->alasan ?? ''), 'peremajaan')
+                ? (float) $penyusutanTerakhir->nilai_penyusutan * 0.50
+                : 0;
 
-        return (float) $nilaiDasar + (float) $totalPemulihan;
+        return (float) $nilaiDasar + (float) $pemulihanTerakhir;
     }
 
     public function getNilaiPerolehanAttribute()
@@ -207,49 +196,20 @@ class Asset extends Model
     public function getNilaiBukuPenghapusanAttribute()
     {
         if ($this->relationLoaded('penyusutanRecords')) {
-            $nilaiDariUsulan = $this->penyusutanRecords
-                ->filter(function ($record) {
-                    return $record->status === 'disetujui'
-                        && $record->requested_by !== null
-                        && !str_contains(strtolower($record->alasan ?? ''), 'peremajaan');
+            $penyusutanTerakhir = $this->penyusutanRecords
+                ->sortByDesc(function ($record) {
+                    return sprintf(
+                        '%s-%010d',
+                        optional($record->created_at)->format('YmdHis') ?? '',
+                        $record->id_penyusutan
+                    );
                 })
-                ->sortBy([
-                    ['created_at', 'desc'],
-                    ['id_penyusutan', 'desc'],
-                ])
-                ->first()
-                ?->nilai_setelah_penyusutan;
+                ->first();
 
-            if ($nilaiDariUsulan !== null) {
-                return (float) $nilaiDariUsulan;
-            }
-
-            $nilaiDariSusutTerakhir = $this->penyusutanRecords
-                ->whereNull('requested_by')
-                ->sortBy([
-                    ['created_at', 'desc'],
-                    ['id_penyusutan', 'desc'],
-                ])
-                ->first()
-                ?->nilai_setelah_penyusutan;
-
-            return (float) ($nilaiDariSusutTerakhir ?? $this->total_harga ?? 0);
-        }
-
-        $nilaiDariUsulan = $this->penyusutanRecords()
-            ->where('status', 'disetujui')
-            ->whereNotNull('requested_by')
-            ->where('alasan', 'NOT LIKE', '%peremajaan%')
-            ->orderBy('created_at', 'desc')
-            ->orderBy('id_penyusutan', 'desc')
-            ->value('nilai_setelah_penyusutan');
-
-        if ($nilaiDariUsulan !== null) {
-            return (float) $nilaiDariUsulan;
+            return (float) ($penyusutanTerakhir?->nilai_setelah_penyusutan ?? $this->total_harga ?? 0);
         }
 
         $nilaiDariSusutTerakhir = $this->penyusutanRecords()
-            ->whereNull('requested_by')
             ->orderBy('created_at', 'desc')
             ->orderBy('id_penyusutan', 'desc')
             ->value('nilai_setelah_penyusutan');

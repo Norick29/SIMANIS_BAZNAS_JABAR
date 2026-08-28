@@ -194,7 +194,7 @@ public function printLaporanPenghapusan(Request $request)
         'printed_by' => $printedBy,
         'printed_at' => $timestamp,
         'fingerprint' => 'KEY-' . $fingerprintKadept,
-        'signature' => substr($sigKadept, 0, 25) . '...',
+        'digital_signature' => substr($sigKadept, 0, 25) . '...',
     ]);
     $qrDataKadiv  = URL::signedRoute('reports.verify', [
         'document' => 'Laporan Penghapusan Aset',
@@ -203,7 +203,7 @@ public function printLaporanPenghapusan(Request $request)
         'printed_by' => $printedBy,
         'printed_at' => $timestamp,
         'fingerprint' => 'KEY-' . $fingerprintKadiv,
-        'signature' => substr($sigKadiv, 0, 25) . '...',
+        'digital_signature' => substr($sigKadiv, 0, 25) . '...',
     ]);
 
     $qrCodeSystem = "SIMASET DISPOSAL STAMP | Operator Cetak: {$printedBy} ({$role}) | Waktu: {$timestamp} | Status Data: Valid.";

@@ -190,17 +190,10 @@ class DashboardController extends Controller
         }
 
         // 1. Hitung total akumulasi beban penyusutan yang sudah terjadi dari engine otomatis
-        $total_beban_penyusutan = PenyusutanAset::whereNull('requested_by')
-            ->orderBy('created_at')
-            ->orderBy('id_penyusutan')
-            ->get()
-            ->groupBy('id_aset')
-            ->sum(function ($records) {
-                return $records->last()->nilai_penyusutan ?? 0;
-            });
+        $total_beban_penyusutan = PenyusutanAset::sum('nilai_penyusutan');
 
         // 2. Hitung rata-rata nilai penyusutan per item aset
-        $total_rekor_susut = PenyusutanAset::whereNull('requested_by')->distinct('id_aset')->count('id_aset');
+        $total_rekor_susut = PenyusutanAset::distinct('id_aset')->count('id_aset');
         $rata_rata_penyusutan = $total_rekor_susut > 0 ? ($total_beban_penyusutan / $total_rekor_susut) : 0;
 
         // 3. Hitung jumlah aset yang umurnya sudah melebihi umur ekonomis (Aset Kritis)

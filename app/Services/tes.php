@@ -1,0 +1,1 @@
+$config = [ "private_key_bits" => 2048, "private_key_type" => OPENSSL_KEYTYPE_RSA, " digest_alg" => "sha256", ]; $res = openssl_pkey_new($config); $privateKey = null; openssl_pkey_export( $res, $privateKey ); $publicKeyDetails = openssl_pkey_get_details($res); $publicKey = $publicKeyDetails['key']; return [ 'public_key' => $publicKey, 'private_key' => encrypt($privateKey), ];

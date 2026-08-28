@@ -8,6 +8,8 @@ use App\Models\PenghapusanAset;
 use App\Models\Asset;
 use App\Models\Approval;
 use App\Models\MasterPenyusutan;
+use App\Models\User;
+use App\Notifications\AssetMutationNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -254,6 +256,12 @@ foreach ($assetsAktif as $aset) {
             ]);
 
             DB::commit();
+
+            $this->notifyKadeptLifecycleSubmission(
+                'peremajaan',
+                $penyusutan->asset->kode_aset ?? '-'
+            );
+
             return redirect()->back()->with('success', 'Usulan peremajaan fisik aset berhasil dikirim ke Kepala Departemen.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -285,6 +293,8 @@ foreach ($assetsAktif as $aset) {
                 ->where('status', 'menunggu')
                 ->exists();
             if ($cek) {
+                DB::rollBack();
+
                 return redirect()->back()->with(
                     'warning',
                     'Aset tersebut sedang dalam proses pengajuan penghapusan.'
@@ -326,6 +336,11 @@ foreach ($assetsAktif as $aset) {
             ]);
 
             DB::commit();
+
+            $this->notifyKadeptLifecycleSubmission(
+                'penghapusan',
+                $penyusutan->asset->kode_aset ?? '-'
+            );
 
             return redirect()->back()->with(
                 'success',
@@ -459,7 +474,7 @@ foreach ($assetsAktif as $aset) {
         'printed_by' => $printedBy,
         'printed_at' => $timestamp,
         'fingerprint' => 'KEY-' . $fingerprintKadept,
-        'signature' => substr($sigKadept, 0, 25) . '...',
+        'digital_signature' => substr($sigKadept, 0, 25) . '...',
     ]);
     $qrDataKadiv  = URL::signedRoute('reports.verify', [
         'document' => 'Laporan Penyusutan & Peremajaan',
@@ -468,7 +483,7 @@ foreach ($assetsAktif as $aset) {
         'printed_by' => $printedBy,
         'printed_at' => $timestamp,
         'fingerprint' => 'KEY-' . $fingerprintKadiv,
-        'signature' => substr($sigKadiv, 0, 25) . '...',
+        'digital_signature' => substr($sigKadiv, 0, 25) . '...',
     ]);
 
     // Log Tracker Audit Stamp bagian tengah
@@ -502,5 +517,28 @@ foreach ($assetsAktif as $aset) {
         'dataPenyusutan', 'qrDataKadept', 'qrDataKadiv', 'qrCodeSystem', 
         'printedBy', 'timestamp', 'kepalaDivisi', 'kepalaDept'
     ));
+}
+
+private function notifyKadeptLifecycleSubmission(string $jenisAksi, string $kodeAset): void
+{
+    try {
+        $label = ucfirst($jenisAksi);
+        $isPenghapusan = $jenisAksi === 'penghapusan';
+
+        $details = [
+            'id_pindah' => null,
+            'title'     => "Pengajuan {$label} Aset Baru",
+            'message'   => "Aset dengan kode {$kodeAset} memiliki usulan {$jenisAksi} dan memerlukan persetujuan Anda pada Stage 1.",
+            'icon'      => $isPenghapusan ? 'fas fa-trash-alt' : 'fas fa-tools',
+            'bg_color'  => $isPenghapusan ? 'bg-danger' : 'bg-info',
+            'url'       => route('approvals.index'),
+        ];
+
+        User::where('role', 'kadept')->get()->each(function (User $kadept) use ($details) {
+            $kadept->notify(new AssetMutationNotification($details));
+        });
+    } catch (\Exception $eMail) {
+        // Pengajuan tetap sah meskipun kanal email/notifikasi sedang bermasalah.
+    }
 }
 }

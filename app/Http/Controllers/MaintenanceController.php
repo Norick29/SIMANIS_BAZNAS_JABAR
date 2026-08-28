@@ -278,7 +278,7 @@ public function index(Request $request)
         'printed_by' => $printedBy,
         'printed_at' => $timestamp,
         'fingerprint' => 'KEY-' . $fingerprintKadept,
-        'signature' => substr($sigKadept, 0, 25) . '...',
+        'digital_signature' => substr($sigKadept, 0, 25) . '...',
     ]);
     $qrDataKadiv  = URL::signedRoute('reports.verify', [
         'document' => 'Laporan Perawatan Aset',
@@ -287,7 +287,7 @@ public function index(Request $request)
         'printed_by' => $printedBy,
         'printed_at' => $timestamp,
         'fingerprint' => 'KEY-' . $fingerprintKadiv,
-        'signature' => substr($sigKadiv, 0, 25) . '...',
+        'digital_signature' => substr($sigKadiv, 0, 25) . '...',
     ]);
 
     // Log Tracker Audit Tengah

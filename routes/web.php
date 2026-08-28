@@ -101,7 +101,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/assets/bulk-print-qr', [AssetController::class, 'bulkPrintQr'])->name('assets.bulk-print-qr');
     Route::post('/assets/selected-print-qr',[AssetController::class, 'selectedPrintQr'])->name('assets.selected-print-qr');
     Route::put('/assets/{id}', [AssetController::class, 'update'])->name('assets.update');
-    Route::delete('/assets/{id}', [AssetController::class, 'destroy'])->name('assets.destroy');
     Route::post('assets/pindah', [AssetController::class, 'pindahAset'])->name('assets.pindah');
     Route::get('/assets/{id}', [AssetController::class, 'show'])->name('assets.show');
     Route::post('/assets/import', [AssetController::class, 'import'])->name('assets.import');

@@ -96,9 +96,11 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <a href="{{ route('users.edit', $u->id_user) }}" class="btn btn-warning btn-sm">
+                                    <button class="btn btn-warning btn-sm"
+                                            data-toggle="modal"
+                                            data-target="#editUserModal{{ $u->id_user }}">
                                         <i class="fas fa-edit"></i>
-                                    </a>
+                                    </button>
 
                                     {{-- <form action="{{ route('users.destroy', $u->id_user) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus user {{ $u->name }}? Data tidak dapat dikembalikan!');">
                                         @csrf
@@ -139,10 +141,10 @@
 
     </div>
 </div>
-</div>
 
 {{-- MODALS INCLUDE (Diposisikan di paling luar container, persis seperti contoh aman) --}}
 @include('superadmin.user.modal-create')
+@include('superadmin.user.modal-edit-single')
 @include('superadmin.user.modal-delete')
 
 @endsection

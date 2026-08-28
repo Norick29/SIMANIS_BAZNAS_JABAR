@@ -81,6 +81,7 @@
                         @error('no_hp')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                    </div>
 
                     {{-- Role --}}
                     <div class="form-group">
